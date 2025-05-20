@@ -7,7 +7,7 @@ const Home = () => {
   const [titulo, setTitulo]                         = useState('')
   const [botonActivo, setBotonActivo]               = useState('')
   const [mostrarFiltro, setMostrarFiltro]           = useState(false)
-  const [filtroSeleccionado, setFiltroSeleccionado] = useState('todos')
+  const [filtroSeleccionado, setFiltroSeleccionado] = useState('hoy')
   const navigate                                    = useNavigate()
 
   useEffect(() => {

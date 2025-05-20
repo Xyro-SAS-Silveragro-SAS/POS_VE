@@ -1,19 +1,41 @@
 import favicon from "../../assets/favicon.png"
 import logo from "../../assets/img/logo.png"
 import { useNavigate } from "react-router"
+import { useState, useEffect } from "react"
 const TopBar = () => {
     const navigate = useNavigate()
+    const [online, setStatus]   = useState(navigator.onLine);
+
+    useEffect(() => {
+        // Función para actualizar el estado
+        const handleOnlineStatusChange = () => {
+            setStatus(navigator.onLine);
+        };
+
+        // Establecer el estado inicial
+        setStatus(navigator.onLine);
+
+        // Agregar event listeners para detectar cambios
+        window.addEventListener('online', handleOnlineStatusChange);
+        window.addEventListener('offline', handleOnlineStatusChange);
+
+        // Limpiar event listeners al desmontar
+        return () => {
+            window.removeEventListener('online', handleOnlineStatusChange);
+            window.removeEventListener('offline', handleOnlineStatusChange);
+        };
+    }, []);
 
     const logout = () => {
         navigate('/login')
     }
     return (
         <>
-            <div className="fixed top-0 bg-[#546C4C] w-full text-white z-1">
+            <div className={`fixed top-0 ${ online ? 'bg-[#546C4C]' : 'bg-red-700'} w-full text-white z-1`}>
                 <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%]">
                     <div className="col-span-6 lg:col-span-3 flex items-center">
                         <img src={logo} alt="" className="w-[100%]"/> 
-                        <small className="px-4 px-1 bg-green-700 rounded-lg font-bold">ONLINE</small>
+                        {/* <small className="px-4 px-1 bg-green-700 rounded-lg font-bold">ONLINE</small> */}
                     </div>
                     <div className="col-span-6 lg:col-span-9 justify-end flex items-center" onClick={logout}>
                         <span className="mr-4 font-bold">Farez</span>
