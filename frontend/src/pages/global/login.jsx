@@ -101,7 +101,7 @@ const Login = () => {
                 //consulto las tablas restantes
                 //await cargarTablasRestantes();
                 Funciones.alerta("Atencion", "Bienvenido", result.success ? 'success' : 'error', () => {
-            
+                    navigate('/home');
                 })
             }
             else{
