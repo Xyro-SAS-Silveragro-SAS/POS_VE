@@ -2,6 +2,7 @@ import favicon from "../../assets/favicon.png"
 import logo from "../../assets/img/logo.png"
 import { useNavigate } from "react-router"
 import { useState, useEffect } from "react"
+import ConnectionAlert from "./ConnectionAlert"
 const TopBar = () => {
     const navigate = useNavigate()
     const [online, setStatus]   = useState(navigator.onLine);
@@ -32,6 +33,8 @@ const TopBar = () => {
     return (
         <>
             <div className={`fixed top-0 ${ online ? 'bg-[#546C4C]' : 'bg-red-700'} w-full text-white z-1`}>
+                {/* alerta para cuando se queda sin internet */}
+                <ConnectionAlert />
                 <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%]">
                     <div className="col-span-6 lg:col-span-3 flex items-center">
                         <img src={logo} alt="" className="w-[100%]"/> 

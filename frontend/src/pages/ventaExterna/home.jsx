@@ -1,14 +1,16 @@
 import TopBar from "../../components/global/TopBar"
 import Footer from "../../components/global/Footer"
 import Filtro from "../../components/global/Filtro"
-import { useNavigate } from "react-router"
+import { useConnection } from "../../context/ConnectionContext";
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router";
 const Home = () => {
   const [titulo, setTitulo]                         = useState('')
   const [botonActivo, setBotonActivo]               = useState('')
   const [mostrarFiltro, setMostrarFiltro]           = useState(false)
   const [filtroSeleccionado, setFiltroSeleccionado] = useState('hoy')
-  const navigate                                    = useNavigate()
+  const navigate                                    = useNavigate();
+  const { isOnline }                                = useConnection();
 
   useEffect(() => {
     setTitulo('Pedidos')
@@ -44,12 +46,10 @@ const Home = () => {
   return (
     <>
       <TopBar/>
-        <div className="w-full md:p-10 m-auto lg:w-[54%] mt-[20%] lg:mt-[3%] md:mt-[13%] mb-[20%] flex flex-wrap text-gray-700 relative">
+        <div className={`w-full md:p-10 m-auto lg:w-[54%] mb-[20%] ${(isOnline) ? ' mt-[20%] lg:mt-[3%] md:mt-[13%] ' : ' mt-[30%] lg:mt-[5%] md:mt-[13%] '} flex flex-wrap text-gray-700 relative`}>
           <div className="w-full  flex items-center justify-between px-[5%] lg:px-[3%] mb-4">
             <h1 className="text-2xl font-bold flex items-center">
               {titulo}
-
-              
             </h1>
             {/* Filtro */}
             <div className="relative flex items-center">
