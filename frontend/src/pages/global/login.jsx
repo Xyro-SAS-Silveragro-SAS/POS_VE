@@ -1,7 +1,9 @@
-import { VERSION, API_MTS } from "../../config/config"
+import { VERSION, API_MTS, TOKEN, USER_TOKEN } from "../../config/config"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import api from "../../services/apiService"
+import ApiSL from "../../services/apiSL";
+import ApiMTS from "../../services/apiMts";
 import { db } from "../../db/db"
 import { useConnection } from "../../context/ConnectionContext"
 import { useAuth } from "../../context/AuthContext"
@@ -9,12 +11,14 @@ import ConnectionAlert from "../../components/global/ConnectionAlert"
 import Funciones from "../../helpers/Funciones"
 import logo from "../../assets/img/logo.png"
 import xyro from "../../assets/img/xyro.png"
+import Mensajes from "../../data/Mensajes"
 const Login = () => {
-    const [cargando, setCargando]   = useState(true)
-    const navigate                  = useNavigate()
-    const { isOnline }              = useConnection()
-    const { login, isAuthenticated, isLoading } = useAuth()
-    const [almacenes, setAlmacenes] = useState([])
+    const [cargando, setCargando]                   = useState(true)
+    const navigate                                  = useNavigate()
+    const { isOnline }                              = useConnection()
+    const { login, isAuthenticated, isLoading }     = useAuth()
+    const [almacenes, setAlmacenes]                 = useState([])
+    const [mensajeAleatorio, setMensajeAleatorio]   = useState("")
 
     const [dataLogin, setDataLogin] = useState({
         usuario: '',
@@ -23,6 +27,7 @@ const Login = () => {
     })
     //efecto para cargar usuarios de la api y guardarlos en la base de datos local
     useEffect(() => {
+        sessionStorage.removeItem('auth_token');
         if(isOnline){
             cargarUsuariosNube();
             getAlmacenesNube();
@@ -33,13 +38,17 @@ const Login = () => {
                 setAlmacenes(almacenes)
             })
         }
+
+        const indiceAleatorio = Math.floor(Math.random() * Mensajes.length);
+        setMensajeAleatorio(Mensajes[indiceAleatorio]);
+
     }, []) 
 
     const getAlmacenesNube = async () => {
         try {
           setCargando(true)
           // Consultar la API para obtener los almacenes
-          const almacenes = await api.get('bodegas')
+          const almacenes = await api.get('api/bodegas')
           if (almacenes.datos && almacenes.datos.length > 0) {
                 //pongo el listado de almacenes en el state
                 setAlmacenes(almacenes.datos)
@@ -59,11 +68,80 @@ const Login = () => {
             setCargando(false)
         }
     }
+    const getClientes = async () => {
+        try {
+          setCargando(true)
+          // Consultar la API para obtener los almacenes
+          const clientes = await api.get('api/clientes/vexterna')
+          if (clientes.datos && clientes.datos.length > 0) {
+                // Almacenar los usuarios en la base de datos local
+                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+                await db.table('clientes').clear()
+                // Insertar cada usuario en la base de datos
+                for (const cliente of clientes.datos) {
+                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                    await db.clientes.add(cliente)
+                }
+            }
+            setCargando(false)
+        }
+        catch (error) {
+            console.error("Error al cargar clientes:", error)
+            setCargando(false)
+        }
+    }
+
+    const getItems = async (bodega) => {
+        try {
+          setCargando(true)
+          // Consultar la API para obtener los almacenes
+          const items = await api.get('api/inventario/bodega/BOD')
+          if (items.datos && items.datos.length > 0) {
+                // Almacenar los usuarios en la base de datos local
+                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+                await db.table('items').clear()
+                // Insertar cada usuario en la base de datos
+                for (const item of items.datos) {
+                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                    await db.items.add(item)
+                }
+            }
+            setCargando(false)
+        }
+        catch (error) {
+            console.error("Error al cargar clientes:", error)
+            setCargando(false)
+        }
+    }
+
+    const getDestinos = async () => {
+        try {
+          setCargando(true)
+          // Consultar la API para obtener los almacenes
+          const destinos = await api.get('api/clientes/destinos')
+          if (destinos.datos && destinos.datos.length > 0) {
+                // Almacenar los usuarios en la base de datos local
+                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+                await db.table('destinos').clear()
+                // Insertar cada usuario en la base de datos
+                for (const item of destinos.datos) {
+                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                    await db.destinos.add(item)
+                }
+            }
+            setCargando(false)
+        }
+        catch (error) {
+            console.error("Error al cargar clientes:", error)
+            setCargando(false)
+        }
+    }
+
     const cargarUsuariosNube = async () => {
         try {
             setCargando(true)
             // Consultar la API para obtener los usuarios
-            const usuarios = await api.get('usuarios')
+            const usuarios = await api.get('api/usuarios/vexterna')
             if (usuarios.datos && usuarios.datos.length > 0) {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
@@ -93,19 +171,24 @@ const Login = () => {
     }
     const handleLogin = async () => {
         const result = await login(dataLogin);
-        
+        console.log(result)
 
         if (result.success) {
             //consulto las tablas restantes solo si hay internet
             if(isOnline){
                 //consulto las tablas restantes
-                //await cargarTablasRestantes();
-                Funciones.alerta("Atencion", "Bienvenido", result.success ? 'success' : 'error', () => {
+                Funciones.alerta("Atencion", "Bienvenido "+result.user.tx_nombre, result.success ? 'success' : 'error', async () => {
+                    await getClientes().catch(err => console.error("Error cargando clientes en segundo plano:", err));
+                    await getItems(dataLogin.bodega).catch(err => console.error("Error cargando items en segundo plano:", err));
+                    await getDestinos().catch(err => console.error("Error cargando destinos en segundo plano:", err));
                     navigate('/home');
                 })
             }
             else{
-                navigate('/home');
+                
+                Funciones.alerta("Atencion", "Bienvenido "+result.user.tx_nombre, result.success ? 'success' : 'error', async () => {
+                    navigate('/home');
+                })
             }
         }
     }
@@ -119,7 +202,7 @@ const Login = () => {
                 <img src={logo} alt="" className="mb-[10%] w-[60%] m-auto"/>
 
                 <blockquote className="text-center italic text-white/90 mb-8 border-l-4 border-red-500 pl-4 py-2">
-                    "Tu pasión cierra ventas, tu servicio crea lealtad."
+                    {mensajeAleatorio}
                 </blockquote>
 
                 <div className="grid mb-4">
@@ -152,7 +235,7 @@ const Login = () => {
                         onChange={(e) => handleChange(e, 'bodega')} >
                         <option value="">SELECCIONE...</option>
                         { almacenes && almacenes.map( (almacen, index) => (
-                            <option key={index} value={almacen.id}>{almacen.tx_nombre}</option>
+                            <option key={index} value={almacen.tx_codigo}>{almacen.tx_nombre}</option>
                         ))}
                     </select>
                 </div>

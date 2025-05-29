@@ -67,6 +67,10 @@ export const AuthProvider = ({ children }) => {
         Funciones.alerta("Atención", "El campo contraseña es obligatorio", "info", () => {});
         setIsLoading(false);
       }
+      else if (!dataLogin.bodega) {
+        Funciones.alerta("Atención", "Debe seleccionar la bodega", "info", () => {});
+        setIsLoading(false);
+      }
       else{
             // Consultar si el usuario existe en la base de datos local
             const usuarios = await db.usuarios.where('tx_usuario').equals(dataLogin.usuario).toArray();

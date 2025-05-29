@@ -4,17 +4,21 @@ import Filtro from "../../components/global/Filtro"
 import { useConnection } from "../../context/ConnectionContext";
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router";
+import { useAuth } from "../../context/AuthContext";
+
 const Home = () => {
-  const [titulo, setTitulo]                         = useState('')
-  const [botonActivo, setBotonActivo]               = useState('')
-  const [mostrarFiltro, setMostrarFiltro]           = useState(false)
-  const [filtroSeleccionado, setFiltroSeleccionado] = useState('hoy')
-  const navigate                                    = useNavigate();
-  const { isOnline }                                = useConnection();
+  const [titulo, setTitulo]                                     = useState('')
+  const [botonActivo, setBotonActivo]                           = useState('')
+  const [mostrarFiltro, setMostrarFiltro]                       = useState(false)
+  const [filtroSeleccionado, setFiltroSeleccionado]             = useState('hoy')
+  const navigate                                                = useNavigate();
+  const { isOnline }                                            = useConnection();
+  const { login, isAuthenticated, isLoading, currentUser }      = useAuth();
 
   useEffect(() => {
     setTitulo('Pedidos')
     setBotonActivo('pedidos')
+    //console.log(currentUser)
   },[])
 
   const handleChangeType = (tipo) => {

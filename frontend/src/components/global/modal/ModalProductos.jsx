@@ -1,8 +1,39 @@
 
 import defaultImage  from '../../../assets/img/default.png'
 import Cantidades from '../../ventaExterna/Cantidades'
+import { useState } from 'react'
+import { db } from '../../../db/db'
+import { PackageSearch } from "lucide-react"
 
 const ModalProductos = ({showProductos = false, toggleProductos = null, handleCantidad=null}) => {
+    const [busqueda, setBusqueda]               = useState('')
+    const [productos, setProductos]             = useState()
+
+
+
+    const handleSetBusqueda = (e) =>{
+        const value = e.target.value;
+        setBusqueda(value);
+    }
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleBuscar();
+        }
+    }
+
+    const consultaProductos = () => {
+        db.items.toArray().then((items) => {
+            const productosBusqueda = items.filter((item) => {
+                return item.LlaveArt.toLowerCase().includes(busqueda.toLowerCase())
+            })
+            setProductos(productosBusqueda)
+        })
+    }
+    const handleBuscar = () => {
+        consultaProductos()
+     }
+
     const items = Array(10).fill().map((_, index) => ({
         id: 1234 + index,
         nombre: 'ABONADORA SEMBRADORA X 12 KILOS '+index,
@@ -24,24 +55,25 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleCa
                                 </svg>
                             </div>
                             <div className="col-span-10 text-center">
-                                <input type="search" placeholder={`Busca productos por nombre o codigo`} className="border p-2 rounded-[5px] w-full border-gray-300 bg-white placeholder-gray-500 text-dark"/>
+                                <input type="search" placeholder={`Busca por nombre o código`} className="border p-2 rounded-[5px] w-full border-gray-300 bg-white placeholder-gray-500 text-black"  onChange={ (e) => { handleSetBusqueda(e) } } value={ busqueda || '' } 
+                                onKeyDown={(e) => { handleKeyDown(e) }}/>
                             </div>
                             <div className="items-center grid justify-end">
-                                <svg onClick="" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
+                                <svg onClick={handleBuscar} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                                 </svg>
                             </div>
                         </div>
                     </div>
         
-                <div className="w-full lg:w-[54%] md:p-10 m-auto flex flex-wrap text-gray-700 relative">
-                    {items && items.length > 0 && items.map((item, index) => (
+                <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-[calc(100vh)] overflow-auto">
+                    {productos && productos.length > 0 && productos.map((item, index) => (
                             <div key={index} className="items-center w-full grid grid-cols-12 border-b-1 border-gray-300">
-                                <div  className=" col-span-2 font-medium flex text-start">
-                                    <img alt="" src={`https://demoapi.xyroposadmin.com/api/imgUnItem/${item.codigoItem}`} className="w-full" onError={(e) => {e.target.src = `${ defaultImageUrl }`}}/>
+                                <div id="fotoProducto" className=" col-span-2 font-medium flex items-start h-full  text-start py-4">
+                                    <img alt="" src={`https://demoapi.xyroposadmin.com/api/imgUnItem/${item.ItemCode}`} className="w-full" onError={(e) => {e.target.src = `${ defaultImage }`}}/>
                                 </div>
-                                <div  className="col-span-8 py-4 font-medium ">
-                                    {item.nombre}
+                                <div  className="col-span-8 py-4 font-medium px-2">
+                                    {item.Articulo}
 
                                     <div className="flex items-center justify-start mt-2">
 
@@ -67,6 +99,17 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleCa
                                 </div>
                             </div>
                         ))}
+
+
+                        { busqueda == '' && (
+                            <div className="text-center py-4 flex flex-wrap items-center justify-center">
+                                <PackageSearch className="size-12"/>
+                                <p className="px-12 w-full mt-2">
+                                    Escribe el nombre o el código del producto para buscarlo
+                                </p>
+                            </div> 
+                        )}
+
                     </div>
                     
                 </div>
