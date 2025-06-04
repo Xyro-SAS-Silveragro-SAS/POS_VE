@@ -31,7 +31,7 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
             <div className={`fixed top-0 left-0 w-full h-dvh bg-white z-50 transform transition-transform duration-200 ease-out ${showIA ? 'translate-y-0' : 'translate-y-full'}`}>
                 <div className="relative w-full h-full">
                     <div className="bg-[#546C4C] w-full text-white z-1">
-                        <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] flex items-center">
+                        <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] items-center">
                             <div className="text-center">
                                 <svg onClick={toggleIA} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer">
                                     <path fillRule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />

@@ -5,21 +5,36 @@ import { useConnection } from "../../context/ConnectionContext";
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
+import { db } from "../../db/db";
 
 const Home = () => {
   const [titulo, setTitulo]                                     = useState('')
   const [botonActivo, setBotonActivo]                           = useState('')
   const [mostrarFiltro, setMostrarFiltro]                       = useState(false)
   const [filtroSeleccionado, setFiltroSeleccionado]             = useState('hoy')
-  const navigate                                                = useNavigate();
-  const { isOnline }                                            = useConnection();
-  const { login, isAuthenticated, isLoading, currentUser }      = useAuth();
+  const navigate                                                = useNavigate()
+  const { isOnline }                                            = useConnection()
+  const { login, isAuthenticated, isLoading, currentUser }      = useAuth()
+  const [listaProcesos, setListaProcesos]                       = useState(null)
 
   useEffect(() => {
     setTitulo('Pedidos')
     setBotonActivo('pedidos')
     //console.log(currentUser)
-  },[])
+  },[]) 
+  
+  useEffect(() => {
+    const getListaProcesos = async () => {
+      const lista = await db.cabeza.where('in_tipo')
+                                   .equals(botonActivo.toLowerCase())
+                                   .toArray()
+      const dataLista = lista.map((item) => {
+        return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
+      })                           
+      setListaProcesos(dataLista)
+    }
+    getListaProcesos()
+  },[botonActivo])
 
   const handleChangeType = (tipo) => {
      const titulo      = (tipo === 'pedido') ? 'Pedidos' : 'Cotizaciones'
@@ -90,10 +105,10 @@ const Home = () => {
               {/* Mostrar filtro seleccionado */}
               
 
-            { pedidos.map((pedido, index) => (
+            {listaProcesos && listaProcesos.map((pedido, index) => (
                 <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer"  onClick={() => nuevoProceso(pedido.id)}>
                     <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center">
-                    {pedido.sync ? (
+                    {pedido.sync === 1 ? (
                         // chulo
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-10">
                           <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
@@ -106,9 +121,9 @@ const Home = () => {
                       )}
                     </div>
                     <div className="col-span-9 lg:col-span-10 relative">
-                      <strong>Nro {titulo}: </strong> {pedido.id}<br/>
-                      <strong>Cliente: </strong> {pedido.cliente}<br/>
-                      <strong>Fecha: </strong> {pedido.fecha}<br/>
+                      <strong>Codigo {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec ? String(pedido.id_consec).slice(-5) : ''}<br/>
+                      <strong>Cliente: </strong> {pedido.tx_nom_sn_nombre !== '' ? pedido.tx_nom_sn_nombre : 'Sin Cliente'}<br/>
+                      <strong>Fecha: </strong> { pedido.dt_fecha_reg ? new Date(pedido.dt_fecha_reg).toLocaleDateString() : 'N/A'}<br/>
                       <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg">ESTADO</small>
                     </div>
                     <div className="col-span-1 flex justify-end items-center">

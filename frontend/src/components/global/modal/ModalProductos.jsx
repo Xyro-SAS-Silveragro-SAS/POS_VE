@@ -3,13 +3,13 @@ import defaultImage  from '../../../assets/img/default.png'
 import Cantidades from '../../ventaExterna/Cantidades'
 import { useState } from 'react'
 import { db } from '../../../db/db'
-import { PackageSearch } from "lucide-react"
+import { PackageSearch, ShoppingCart } from "lucide-react"
+import Funciones from '../../../helpers/Funciones'
+import CardProducto from '../../ventaExterna/CardProducto'
 
-const ModalProductos = ({showProductos = false, toggleProductos = null, handleCantidad=null}) => {
+const ModalProductos = ({showProductos = false, toggleProductos = null}) => {
     const [busqueda, setBusqueda]               = useState('')
-    const [productos, setProductos]             = useState()
-
-
+    const [productos, setProductos]             = useState('')
 
     const handleSetBusqueda = (e) =>{
         const value = e.target.value;
@@ -32,15 +32,26 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleCa
     }
     const handleBuscar = () => {
         consultaProductos()
-     }
+    }
 
-    const items = Array(10).fill().map((_, index) => ({
-        id: 1234 + index,
-        nombre: 'ABONADORA SEMBRADORA X 12 KILOS '+index,
-        cantidad:0,
-        codigoItem:'ACCGRAE35N',
-        sync: (index % 4 === 0)? false: true
-      }))
+    
+
+    const handleCambiaCantidad = (itemModificado, nuevaCantidad, tipo) => {
+        setProductos(prevProductos =>
+            prevProductos.map(producto => {
+                if (producto.id === itemModificado.id) { // Asume que 'id' es un identificador único
+                    if (tipo === 'normal') {
+                        return { ...producto, CantSolicitada: nuevaCantidad };
+                    } else if (tipo === 'bonificado') {
+                        return { ...producto, CantBonificada: nuevaCantidad }; // Asume que existe CantBonificada
+                    }
+                }
+                return producto;
+            })
+        );
+    };
+
+
     
 
     return (
@@ -48,7 +59,7 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleCa
             <div className={`fixed top-0 left-0 w-full h-dvh bg-white z-50 transform transition-transform duration-200 ease-out ${showProductos ? 'translate-y-0' : 'translate-y-full'}`}>
                 <div className="relative w-full h-full">
                     <div className="bg-[#546C4C] w-full text-white z-1">
-                        <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] flex items-center">
+                        <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] items-center">
                             <div className="text-center">
                                 <svg onClick={toggleProductos} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer">
                                     <path fillRule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
@@ -66,38 +77,9 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleCa
                         </div>
                     </div>
         
-                <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-[calc(100vh)] overflow-auto">
-                    {productos && productos.length > 0 && productos.map((item, index) => (
-                            <div key={index} className="items-center w-full grid grid-cols-12 border-b-1 border-gray-300">
-                                <div id="fotoProducto" className=" col-span-2 font-medium flex items-start h-full  text-start py-4">
-                                    <img alt="" src={`https://demoapi.xyroposadmin.com/api/imgUnItem/${item.ItemCode}`} className="w-full" onError={(e) => {e.target.src = `${ defaultImage }`}}/>
-                                </div>
-                                <div  className="col-span-8 py-4 font-medium px-2">
-                                    {item.Articulo}
-
-                                    <div className="flex items-center justify-start mt-2">
-
-                                        <Cantidades 
-                                            titulo = 'SOLICITADOS'
-                                            item = {item}
-                                            handleCantidad  = {handleCantidad}
-                                            />
-
-                                        <Cantidades 
-                                            titulo = 'BONIFICADO'
-                                            item = {item}
-                                            handleCantidad  = {handleCantidad}
-                                            />
-
-                                    </div>
-
-                                </div>
-                                <div className="col-span-2 flex justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer" onClick={toggleProductos}>
-                                        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                            </div>
+                    <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-[calc(100vh)] overflow-auto">
+                        {productos && productos.length > 0 && productos.map((item, index) => (
+                            <CardProducto item={item} key={index} handleCambiaCantidad={handleCambiaCantidad}/>
                         ))}
 
 

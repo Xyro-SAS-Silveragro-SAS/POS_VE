@@ -258,7 +258,7 @@ const Login = () => {
         </div>
 
         <div className="absolute bottom-0 left-0 w-full p-4 bg-[#4E6446]">
-            <div className="grid grid-cols-12 flex items-center">
+            <div className="grid grid-cols-12 items-center">
                 <div className="col-span-12 flex items-center justify-center text-white">
                     <img src={xyro} className="w-[50px] mr-4" alt="Logo Xyro" />
                     <small>Versi&oacute;n {VERSION}</small>

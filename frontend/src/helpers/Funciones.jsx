@@ -19,6 +19,37 @@ const Funciones = {
         }
         return precio;
     },
+    alertaBox: (titulo, mensaje, tipo, callback = () => {}, callbackCancel = () => {}, btnAceptar="ACEPTAR", btnCancelar="CANCELAR", tipoCaja='text', placeholder = "...", textoInicial = "", textoSiVacio="") => {
+        const MySwal = withReactContent(Swal)
+        MySwal.fire({
+            title: titulo,
+            input: tipoCaja,
+            html: mensaje,
+            icon: tipo,
+            inputPlaceholder: placeholder,
+            inputValue:textoInicial,
+            inputAttributes: {
+                autocomplete: 'off'
+            },
+            reverseButtons: true,
+            showCancelButton: true,
+            confirmButtonText: btnAceptar,
+            cancelButtonText: btnCancelar,
+            showLoaderOnConfirm: false,
+            allowOutsideClick:false,
+            preConfirm: (inputValue) => {
+                if (!inputValue) {
+                    Swal.showValidationMessage(textoSiVacio);
+                } else {
+                    callback(inputValue);
+                }
+            }
+        }).then((result)=>{
+            if(!result.isConfirmed){
+                callbackCancel();
+            }
+        });
+    },
     alerta:(titulo="Atencion",mensaje="",tipo="info",callback=()=>{},botonAceptar="ACEPTAR") =>{
         const MySwal = withReactContent(Swal)
         MySwal.fire({
