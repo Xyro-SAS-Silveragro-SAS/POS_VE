@@ -25,61 +25,6 @@ const Proceso = () => {
     const [showIA, setShowIA]                                   = useState(false);
     const [clienteSel, setClienteSel]                           = useState({})   
     const [cabezaPedido, setCabezaPedido]                       = useState({})
-    const [dataCabeza, setDataCabeza]                           = useState({
-            id_consec:uuidv4(),
-            DocNum:0,
-            DocEntry:0,
-            in_tipo:tipoProceso,
-            num_doc:0,
-            num_fac:0,
-            tx_cod_sn:'',
-            tx_nom_sn_nombre:'',
-            tx_dir_cli_pos:'',
-            tx_tel_cli_pos:"",
-            tx_cod_alm_pos:"",
-            in_subtot_pos:0,
-            in_vlr_total:0,
-            in_estado:0,
-            dt_fecha_reg:new Date(),
-            tx_usua:currentUser ? currentUser.id_usuario : '',
-            tx_comentarios:"",
-            tx_nom_emp:'-Ningún empleado del departamento de ventas-',
-            in_cod_emp:0,
-            resp_api:'',
-            in_lst_precio:0,
-            tx_usuario_logueado:currentUser ? currentUser.id_usuario : '',
-            es_cotizacion:0,
-            sync:0,
-          }
-    )
-    const [dataLineas, setDataLineas]             = useState({
-            id_num_lin_pos:0,
-            id_num_doc_pos:0,
-            tx_cod_art_pos:0,
-            tx_desc_art_pos:0,
-            in_vlr_unit_pos:0,
-            in_cantidad:0,
-            in_cantbonif_pos:0,
-            in_stock_pos:0,
-            lotes:0,
-            CodigoBarras:0,
-            in_dto_pos:0,
-            in_dto_pos_bk:0,
-            tx_cod_imp_pos:0,
-            in_porc_imp_pos:0,
-            in_tot_lin_pos:0,
-            in_estado_lin_pos:0,
-            id_tienda:0,
-            id_caja:0,
-            dt_fecha_reg:0,
-            tx_usua_reg:currentUser ? currentUser.id_usuario : '',
-            esNube:0,
-            CodAlmacen:0,
-            EsInventariable:0,
-            conDescuentoCliente:0,
-            sync:0,
-    })
-
     useEffect(() => {
         async function initializeProcess() {
             setCargando(true);
@@ -88,8 +33,30 @@ const Proceso = () => {
                 // Cuando el pedido no existe lo creo
                 if(idProceso === undefined){
                     const nuevaCabeza = {
-                        ...dataCabeza,
-                        id_consec: uuidv4(),
+                        id_consec:uuidv4(),
+                        DocNum:0,
+                        DocEntry:0,
+                        in_tipo:tipoProceso,
+                        num_doc:0,
+                        num_fac:0,
+                        tx_cod_sn:'',
+                        tx_nom_sn_nombre:'',
+                        tx_dir_cli_pos:'',
+                        tx_tel_cli_pos:"",
+                        tx_cod_alm_pos:"",
+                        in_subtot_pos:0,
+                        in_vlr_total:0,
+                        in_estado:0,
+                        dt_fecha_reg:new Date(),
+                        tx_usua:currentUser ? currentUser.id_usuario : '',
+                        tx_comentarios:"",
+                        tx_nom_emp:'-Ningún empleado del departamento de ventas-',
+                        in_cod_emp:0,
+                        resp_api:'',
+                        in_lst_precio:0,
+                        tx_usuario_logueado:currentUser ? currentUser.id_usuario : '',
+                        es_cotizacion:0,
+                        sync:0,
                     };
                     
                     // Inserto una nueva cabeza para obtener el id
@@ -112,14 +79,12 @@ const Proceso = () => {
                     setPedidoActual(idProceso);
                     
                     // Consulto la data del pedido actual para persistir
-                    // CORRECCIÓN: usar idProceso en lugar de idPedidoActual
                     const infoCabeza = await db.cabeza.get(parseInt(idProceso));
                     
                     if (infoCabeza) {
                         setCabezaPedido(infoCabeza);
                     } else {
                         console.error('No se encontró la cabeza del pedido con ID:', idProceso);
-                        // Opcional: redirigir o manejar el error
                     }
                 }
             } catch (error) {
@@ -199,6 +164,29 @@ const Proceso = () => {
             return `Cotización ****${ultimosDigitos}`;
         }
     };
+
+    //funcion que agrega al acarrito las lineas
+    const handleAddToCar = (item)=>{
+        console.log(item)
+        const dataGuardarLinea = {
+                in_id_cabeza:cabezaPedido.id,
+                tx_cod_art_pos:item.ItemCode,
+                tx_desc_art_pos:item.Articulo,
+                in_vlr_unit_pos:item.Precio,
+                in_cantidad:item.CantSolicitada,
+                in_cantbonif_pos:item.CantBonificada,
+                in_stock_pos:item.Cantidad,
+                CodigoBarras:item.CodigoBarras,
+                in_dto_pos:0,
+                tx_cod_imp_pos:item.Impuesto,
+                in_porc_imp_pos:item.PorcImpto,
+                in_estado_lin_pos:0,
+                dt_fecha_reg: new Date(),
+                tx_usua_reg:currentUser ? currentUser.id_usuario : '',
+                CodAlmacen:item.CodAlmacen,
+                sync:0,
+        }
+    }
 
     return (
         <>
@@ -295,7 +283,7 @@ const Proceso = () => {
             {/* fin del modal clientes */}
 
             {/* Modal productos*/}
-            <ModalProductos showProductos={showProductos} toggleProductos={toggleProductos}/>
+            <ModalProductos showProductos={showProductos} toggleProductos={toggleProductos} handleAddToCar={handleAddToCar}/>
             {/* fin del modal productos */}
 
             {/* Modal IA*/}

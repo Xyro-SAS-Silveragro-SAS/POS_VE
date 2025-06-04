@@ -7,7 +7,7 @@ import { PackageSearch, ShoppingCart } from "lucide-react"
 import Funciones from '../../../helpers/Funciones'
 import CardProducto from '../../ventaExterna/CardProducto'
 
-const ModalProductos = ({showProductos = false, toggleProductos = null}) => {
+const ModalProductos = ({showProductos = false, toggleProductos = null, handleAddToCar=null}) => {
     const [busqueda, setBusqueda]               = useState('')
     const [productos, setProductos]             = useState('')
 
@@ -79,7 +79,7 @@ const ModalProductos = ({showProductos = false, toggleProductos = null}) => {
         
                     <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-[calc(100vh)] overflow-auto">
                         {productos && productos.length > 0 && productos.map((item, index) => (
-                            <CardProducto item={item} key={index} handleCambiaCantidad={handleCambiaCantidad}/>
+                            <CardProducto item={item} key={index} handleAddToCar={handleAddToCar}/>
                         ))}
 
 
