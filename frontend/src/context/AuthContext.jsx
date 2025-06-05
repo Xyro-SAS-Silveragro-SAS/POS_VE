@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+//import { useNavigate } from 'react-router-dom';
 import { db } from '../db/db';
 import Funciones from '../helpers/Funciones';
 import CryptoJS from 'crypto-js';
@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  //const Navigate = useNavigate();
   
   // Verificar si hay un usuario en localStorage al cargar
   useEffect(() => {
@@ -112,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('usuario');
     setCurrentUser(null);
     setIsAuthenticated(false);
+    //Navigate('/login')
     return true;
   };
 

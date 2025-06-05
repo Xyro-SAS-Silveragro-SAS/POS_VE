@@ -1,5 +1,4 @@
 
-import defaultImage  from '../../../assets/img/default.png'
 import Cantidades from '../../ventaExterna/Cantidades'
 import { useState } from 'react'
 import { db } from '../../../db/db'

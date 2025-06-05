@@ -12,13 +12,19 @@ import Funciones from "../../helpers/Funciones"
 import logo from "../../assets/img/logo.png"
 import xyro from "../../assets/img/xyro.png"
 import Mensajes from "../../data/Mensajes"
+import datosInteresantes from "../../data/Interesantes"
+import { ClipLoader } from 'react-spinners';
+import PreloaderLogin from "../../components/global/PreloaderLogin"
+
 const Login = () => {
+    const [loading, setLoading]                     = useState(false);
     const [cargando, setCargando]                   = useState(true)
     const navigate                                  = useNavigate()
     const { isOnline }                              = useConnection()
     const { login, isAuthenticated, isLoading }     = useAuth()
     const [almacenes, setAlmacenes]                 = useState([])
     const [mensajeAleatorio, setMensajeAleatorio]   = useState("")
+    const [datoAleatorio, setDatoAleatorio]         = useState("")
 
     const [dataLogin, setDataLogin] = useState({
         usuario: '',
@@ -55,11 +61,8 @@ const Login = () => {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('almacenes').clear()
-                // Insertar cada usuario en la base de datos
-                for (const almacen of almacenes.datos) {
-                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
-                    await db.almacenes.add(almacen)
-                }
+                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                await db.almacenes.bulkAdd(almacenes.datos)
             }
             setCargando(false)
         }
@@ -77,11 +80,8 @@ const Login = () => {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('clientes').clear()
-                // Insertar cada usuario en la base de datos
-                for (const cliente of clientes.datos) {
-                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
-                    await db.clientes.add(cliente)
-                }
+                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                await db.clientes.bulkAdd(clientes.datos)
             }
             setCargando(false)
         }
@@ -100,11 +100,8 @@ const Login = () => {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('items').clear()
-                // Insertar cada usuario en la base de datos
-                for (const item of items.datos) {
-                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
-                    await db.items.add(item)
-                }
+                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                await db.items.bulkAdd(items.datos)
             }
             setCargando(false)
         }
@@ -123,11 +120,8 @@ const Login = () => {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('destinos').clear()
-                // Insertar cada usuario en la base de datos
-                for (const item of destinos.datos) {
-                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
-                    await db.destinos.add(item)
-                }
+                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                await db.destinos.bulkAdd(destinos.datos)
             }
             setCargando(false)
         }
@@ -146,11 +140,8 @@ const Login = () => {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('usuarios').clear()
-                // Insertar cada usuario en la base de datos
-                for (const usuario of usuarios.datos) {
-                    // Si el usuario tiene bodegas, las guardamos como parte del objeto
-                    await db.usuarios.add(usuario)
-                }
+                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                await db.usuarios.bulkAdd(usuarios.datos)
             }
             setCargando(false)
 
@@ -176,11 +167,15 @@ const Login = () => {
         if (result.success) {
             //consulto las tablas restantes solo si hay internet
             if(isOnline){
+                setLoading(true);
+                const indiceAleatorioD = Math.floor(Math.random() * datosInteresantes.length);
+                setDatoAleatorio(datosInteresantes[indiceAleatorioD]);
+
+                await getClientes().catch(err => console.error("Error cargando clientes en segundo plano:", err));
+                await getItems(dataLogin.bodega).catch(err => console.error("Error cargando items en segundo plano:", err));
+                await getDestinos().catch(err => console.error("Error cargando destinos en segundo plano:", err));
                 //consulto las tablas restantes
                 Funciones.alerta("Atencion", "Bienvenido "+result.user.tx_nombre, result.success ? 'success' : 'error', async () => {
-                    await getClientes().catch(err => console.error("Error cargando clientes en segundo plano:", err));
-                    await getItems(dataLogin.bodega).catch(err => console.error("Error cargando items en segundo plano:", err));
-                    await getDestinos().catch(err => console.error("Error cargando destinos en segundo plano:", err));
                     navigate('/home');
                 })
             }
@@ -192,8 +187,16 @@ const Login = () => {
             }
         }
     }
+
+
   return (
     <>
+        {/* Preloader overlay */}
+        {loading && (
+            <PreloaderLogin loading={loading} logo={logo} />
+        )}
+
+       
         {/* alerta de conexion */}
         <ConnectionAlert/>
 
@@ -257,7 +260,7 @@ const Login = () => {
             </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 w-full p-4 bg-[#4E6446]">
+        <div className="absolute bottom-0 left-0 w-full p-4 bg-[#4E6446] z-1">
             <div className="grid grid-cols-12 items-center">
                 <div className="col-span-12 flex items-center justify-center text-white">
                     <img src={xyro} className="w-[50px] mr-4" alt="Logo Xyro" />
