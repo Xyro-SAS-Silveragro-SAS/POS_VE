@@ -56,8 +56,8 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
     return (
         <>
             <div className={`fixed top-0 left-0 w-full h-dvh bg-white z-50 transform transition-transform duration-200 ease-out ${showProductos ? 'translate-y-0' : 'translate-y-full'}`}>
-                <div className="relative w-full h-full">
-                    <div className="bg-[#546C4C] w-full text-white z-1">
+                <div className="relative w-full h-full overflow-auto">
+                    <div className="fixed bg-[#546C4C] w-full text-white z-1 top-0">
                         <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] items-center">
                             <div className="text-center">
                                 <svg onClick={toggleProductos} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer">
@@ -76,7 +76,7 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
                         </div>
                     </div>
         
-                    <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-[calc(100vh)] overflow-auto">
+                    <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-auto mt-[90px]">
                         {productos && productos.length > 0 && productos.map((item, index) => (
                             <CardProducto item={item} key={index} handleAddToCar={handleAddToCar}/>
                         ))}

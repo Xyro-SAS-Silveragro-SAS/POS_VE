@@ -83,6 +83,7 @@ export const AuthProvider = ({ children }) => {
                     // Si es correcta, guardar el usuario en el localStorage y en el estado
                     const user = { ...usuarios[0]};
                     localStorage.setItem('usuario', JSON.stringify(user));
+                    localStorage.setItem('bodega', dataLogin.bodega);
                     setCurrentUser(user);
                     setIsAuthenticated(true);
                     setIsLoading(false);
@@ -113,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('usuario');
     setCurrentUser(null);
     setIsAuthenticated(false);
-    //Navigate('/login')
+    document.location = '/login'
     return true;
   };
 

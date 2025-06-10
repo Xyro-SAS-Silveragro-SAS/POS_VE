@@ -17,13 +17,13 @@ const Filtro = ({aplicarFiltro = null,filtroSeleccionado = 'Hoy'}) => {
                     </div>
                     <div 
                       className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${filtroSeleccionado === 'estasemana' ? 'bg-gray-100 font-bold' : ''}`}
-                      onClick={() => aplicarFiltro('EstaSemana')}
+                      onClick={() => aplicarFiltro('Esta Semana')}
                     >
                       Esta semana
                     </div>
                     <div 
                       className={`px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 ${filtroSeleccionado === 'estemes' ? 'bg-gray-100 font-bold' : ''}`}
-                      onClick={() => aplicarFiltro('EsteMes')}
+                      onClick={() => aplicarFiltro('Este Mes')}
                     >
                       Este mes
                     </div>

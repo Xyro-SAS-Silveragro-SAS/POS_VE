@@ -17,6 +17,8 @@ const Home = () => {
   const { isOnline }                                                    = useConnection()
   const { isAuthenticated, isLoading, currentUser, logout }             = useAuth()
   const [listaProcesos, setListaProcesos]                               = useState(null)
+  const [procesosFiltrados, setProcesosFiltrados]                       = useState(null)
+  const [mostrarModalUsuario, setMostrarModalUsuario]                   = useState(false)
   const { 
     startTour
   } = useTourContext();
@@ -41,7 +43,7 @@ const Home = () => {
         navigate('/login')
       }
     }
-  },[isAuthenticated])
+  },[isAuthenticated, isLoading, navigate])
 
   useEffect(() => {
     const getListaProcesos = async () => {
@@ -50,11 +52,79 @@ const Home = () => {
                                    .toArray()
       const dataLista = lista.map((item) => {
         return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
-      })                           
+      }).filter(item => item !== null)                           
       setListaProcesos(dataLista)
     }
-    getListaProcesos()
-  },[botonActivo])
+    if (botonActivo && currentUser) {
+      getListaProcesos()
+    }
+  },[botonActivo, currentUser])
+
+  // Efecto para aplicar el filtro cuando cambian los procesos o el filtro seleccionado
+  useEffect(() => {
+    if (listaProcesos) {
+      const procesosFiltrados = filtrarProcesos(listaProcesos, filtroSeleccionado)
+      setProcesosFiltrados(procesosFiltrados)
+    }
+  }, [listaProcesos, filtroSeleccionado])
+
+  // Función para filtrar procesos según el criterio seleccionado
+  const filtrarProcesos = (procesos, filtro) => {
+    setProcesosFiltrados([])
+    if (!procesos || procesos.length === 0) return []
+
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+
+    return procesos.filter(proceso => {
+      
+      if (!proceso.dt_fecha_reg) return false
+      
+      const fechaProceso = new Date(proceso.dt_fecha_reg)
+      fechaProceso.setHours(0, 0, 0, 0)
+
+      switch (filtro) {
+        case 'Hoy': {
+          return fechaProceso.getTime() === hoy.getTime()
+        } 
+        case 'Ayer':{
+          const ayer = new Date(hoy)
+          ayer.setDate(hoy.getDate() - 1)
+          return fechaProceso.getTime() === ayer.getTime()
+        }
+        case 'Esta Semana':{
+          const inicioSemana = new Date(hoy)
+          const diaSemana = hoy.getDay()
+          const diasAtras = diaSemana === 0 ? 6 : diaSemana - 1 // Lunes como inicio
+          inicioSemana.setDate(hoy.getDate() - diasAtras)
+          
+          const finSemana = new Date(inicioSemana)
+          finSemana.setDate(inicioSemana.getDate() + 6)
+          
+          return fechaProceso >= inicioSemana && fechaProceso <= finSemana
+        }
+        case 'Este Mes':{
+          return fechaProceso.getMonth() === hoy.getMonth() && 
+                 fechaProceso.getFullYear() === hoy.getFullYear()
+        }
+        case 'mes_pasado':{
+          const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)
+          const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0)
+          return fechaProceso >= mesAnterior && fechaProceso <= finMesAnterior
+        }
+        case 'ultimos_30_dias':{
+          const hace30Dias = new Date(hoy)
+          hace30Dias.setDate(hoy.getDate() - 30)
+          return fechaProceso >= hace30Dias && fechaProceso <= hoy
+        }
+        case 'Todos':
+          return true
+          
+        default:
+          return true
+      }
+    })
+  }
 
   const handleChangeType = (tipo) => {
      const titulo      = (tipo === 'pedido') ? 'Pedidos' : 'Cotizaciones'
@@ -62,13 +132,6 @@ const Home = () => {
      setBotonActivo(botonActivo)
      setTitulo(titulo)
   }
-
-  const pedidos = Array(10).fill().map((_, index) => ({
-    id: 1234 + index,
-    cliente: 'Comercializadora El burrito felizmente',
-    fecha: '2023-06-15',
-    sync: (index % 4 === 0)? false: true
-  }))
 
   const toggleFiltro = () => {
     setMostrarFiltro(!mostrarFiltro)
@@ -78,13 +141,38 @@ const Home = () => {
     setFiltroSeleccionado(filtro)
     setMostrarFiltro(false)
   }
+  
   const nuevoProceso = (id) => {
     navigate(`/proceso/${botonActivo}/${id}`)
   }
 
+   const toggleModalUsuario = () => {
+    setMostrarModalUsuario(!mostrarModalUsuario)
+  }
+
+  const handleLogout = () => {
+    logout()
+    setMostrarModalUsuario(false)
+  }
+
+  // Función para obtener el nombre del filtro en español
+  const getNombreFiltro = (filtro) => {
+    const nombres = {
+      'hoy': 'Hoy',
+      'ayer': 'Ayer',
+      'esta_semana': 'Esta semana',
+      'semana_pasada': 'Semana pasada',
+      'este_mes': 'Este mes',
+      'mes_pasado': 'Mes pasado',
+      'ultimos_30_dias': 'Últimos 30 días',
+      'todos': 'Todos'
+    }
+    return nombres[filtro] || filtro.charAt(0).toUpperCase() + filtro.slice(1)
+  }
+
   return (
     <>
-      <TopBar startTour={startTour} logout={logout}/>
+        <TopBar startTour={startTour} onUserClick={toggleModalUsuario} />
         <div className={`w-full md:p-10 m-auto lg:w-[54%] mb-[20%] ${(isOnline) ? ' mt-[20%] lg:mt-[3%] md:mt-[13%] ' : ' mt-[30%] lg:mt-[5%] md:mt-[13%] '} flex flex-wrap text-gray-700 relative`}>
           <div className="w-full  flex items-center justify-between px-[5%] lg:px-[3%] mb-4">
             <h1 className="text-2xl font-bold flex items-center">
@@ -93,7 +181,7 @@ const Home = () => {
             {/* Filtro */}
             <div className="relative flex items-center">
                 <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm mr-4 filtrosActual">
-                  Filtro: {filtroSeleccionado.charAt(0).toUpperCase() + filtroSeleccionado.slice(1)}
+                  Filtro: {getNombreFiltro(filtroSeleccionado)}
                 </span>
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -119,9 +207,9 @@ const Home = () => {
               
 
 
-          {listaProcesos && listaProcesos.length > 0 ? (
-            // Tu map actual aquí
-            listaProcesos.map((pedido, index) => (
+          {procesosFiltrados && procesosFiltrados.length > 0 ? (
+            // Renderizar procesos filtrados
+            procesosFiltrados.map((pedido, index) => (
               <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer "  onClick={() => nuevoProceso(pedido.id)}>
                   <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center ">
                   {pedido.sync === 1 ? (
@@ -140,7 +228,13 @@ const Home = () => {
                     <strong>Codigo {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec ? String(pedido.id_consec).slice(-5) : ''}<br/>
                     <strong>Cliente: </strong> {pedido.tx_nom_sn_nombre !== '' ? pedido.tx_nom_sn_nombre : 'Sin Cliente'}<br/>
                     <strong>Fecha: </strong> { pedido.dt_fecha_reg ? new Date(pedido.dt_fecha_reg).toLocaleDateString() : 'N/A'}<br/>
-                    <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg">ESTADO</small>
+                    <strong>Valor: </strong> ${ pedido.in_vlr_total ? pedido.in_vlr_total.toLocaleString('es-CO') : 'N/A'}<br/>
+                    { pedido && pedido.sync === 0 ? (
+                      <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg">SIN SINCRONIZAR</small>
+                    ) : (
+                      <small className=" bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg">SINCRONIZADO</small>
+                    )}
+
                   </div>
                   <div className="col-span-1 flex justify-end items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8">
@@ -160,7 +254,10 @@ const Home = () => {
                       No hay {titulo.toLowerCase()} para mostrar
                   </h3>
                   <p className="text-gray-500 text-center p-8">
-                      Aún no has agregado {titulo} a tu lista. Para empezar presiona el botón rojo que está en la parte inferior derecha de la pantalla
+                      {filtroSeleccionado === 'hoy' 
+                        ? `Aún no has agregado ${titulo.toLowerCase()} hoy. Para empezar presiona el botón rojo que está en la parte inferior derecha de la pantalla`
+                        : `No hay ${titulo.toLowerCase()} en el período seleccionado (${getNombreFiltro(filtroSeleccionado)}). Prueba con otro filtro o agrega nuevos ${titulo.toLowerCase()}.`
+                      }
                   </p>
               </div>
           )}
@@ -174,6 +271,77 @@ const Home = () => {
           </button>
 
         </div>
+        
+
+
+     {/* Modal de información del usuario */}
+        {mostrarModalUsuario && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={toggleModalUsuario}>
+            <div className="bg-white rounded-lg p-6 w-11/12 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              {/* Header del modal */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Información del Usuario</h2>
+                <button onClick={toggleModalUsuario} className="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
+                    <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contenido del modal */}
+              {currentUser && (
+                <div className="space-y-4">
+                  {/* Avatar del usuario */}
+                  <div className="flex justify-center mb-4">
+                    <div className="w-20 h-20 bg-gray-300 rounded-full flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-10 text-gray-600">
+                        <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Información del usuario */}
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{currentUser.tx_nombre}</h3>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p><strong>ID Usuario:</strong> {currentUser.id_usuario}</p>
+                      {currentUser.tx_email && (
+                        <p><strong>Email:</strong> {currentUser.tx_email}</p>
+                      )}
+                      {currentUser.tx_telefono && (
+                        <p><strong>Teléfono:</strong> {currentUser.tx_telefono}</p>
+                      )}
+                      {currentUser.tx_cargo && (
+                        <p><strong>Cargo:</strong> {currentUser.tx_cargo}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estado de conexión */}
+                  <div className="flex items-center justify-center space-x-2 py-2">
+                    <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm text-gray-600">
+                      {isOnline ? 'Conectado' : 'Sin conexión'}
+                    </span>
+                  </div>
+
+                  {/* Botón de cerrar sesión */}
+                  <div className="pt-4 border-t">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
+                        <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 0 0 6 5.25v13.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5V15a.75.75 0 0 1 1.5 0v3.75a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3V5.25a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3V9A.75.75 0 0 1 15 9V5.25a1.5 1.5 0 0 0-1.5-1.5h-6Zm10.72 4.72a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1 0 1.06l-3 3a.75.75 0 1 1-1.06-1.06l1.72-1.72H9a.75.75 0 0 1 0-1.5h10.94l-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                      </svg>
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         
 

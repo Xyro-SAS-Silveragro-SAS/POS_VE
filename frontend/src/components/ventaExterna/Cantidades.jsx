@@ -1,8 +1,5 @@
-import { useEffect, useState } from "react"
+
 const Cantidades = ({titulo = "", tipo='normal',item = null, handleCantidad = null, cantidad = 0}) => {
-
-
-
     return (
         <>
             <div className="flex flex-wrap">

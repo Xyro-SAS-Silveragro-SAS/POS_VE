@@ -31,6 +31,15 @@ const Login = () => {
         clave: '',
         bodega: ''
     })
+
+    useEffect(() => {
+    if(!isLoading){
+      if(!isAuthenticated){
+        navigate('/home')
+      }
+    }
+  },[isAuthenticated])
+
     //efecto para cargar usuarios de la api y guardarlos en la base de datos local
     useEffect(() => {
         sessionStorage.removeItem('auth_token');

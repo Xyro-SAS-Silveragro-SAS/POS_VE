@@ -60,7 +60,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                             .equals(itemModificado.id)
                             .modify({ CantSolicitada: nuevaCantidad })
                             .then(() => {
-                                initializeProcess()
+                                 setTimeout(() => {
+                                    //initializeProcess();
+                                }, 50);
                             })
                             .catch((error) => {
                                 console.error('Error al actualizar la cantidad en la línea:', error);
@@ -74,7 +76,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                             .equals(itemModificado.id)
                             .modify({ CantBonificada: nuevaCantidad })
                             .then(() => {
-                                initializeProcess()
+                                 setTimeout(() => {
+                                    //initializeProcess();
+                                }, 50);
                             })
                             .catch((error) => {
                                 console.error('Error al actualizar la cantidad en la línea:', error);

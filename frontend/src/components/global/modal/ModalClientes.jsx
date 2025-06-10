@@ -38,8 +38,8 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
     return (
         <>
             <div className={`fixed top-0 left-0 w-full h-dvh bg-white z-50 transform transition-transform duration-200 ease-out ${showClientes ? 'translate-y-0' : 'translate-y-full'}`}>
-                <div className="relative w-full h-full">
-                    <div className="bg-[#546C4C] w-full text-white z-1">
+                <div className="relative w-full h-full overflow-auto">
+                    <div className="fixed bg-[#546C4C] w-full text-white z-1 top-0">
                         <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] items-center">
                             <div className="text-center">
                                 <svg onClick={toggleClientes} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer">
@@ -58,7 +58,7 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                         </div>
                     </div>
         
-                    <div className="w-full lg:w-[54%] md:p-10 m-auto  text-gray-700 relative h-[calc(100vh)] overflow-auto">
+                    <div className="w-full lg:w-[54%] md:p-10 m-auto  text-gray-700 relative  h-auto mt-[90px]">
                         { busqueda != '' && clientes && clientes.length === 0 ? (
                             <div className="text-center py-4 flex flex-wrap items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="mt-8 size-12">
@@ -101,7 +101,7 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                                 <p className="px-12 w-full mt-2">
                                     Escribe el nombre o el código del cliente para buscarlo
                                 </p>
-                            </div> 
+                            </div>
                         )}
 
 
