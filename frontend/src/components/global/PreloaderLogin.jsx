@@ -171,7 +171,7 @@ const PreloaderLogin = ({ loading, logo }) => {
         </div> */}
         
         {/* Contenedor principal */}
-        <div className="glass-effect p-10 w-[90%] max-w-md mx-auto rounded-3xl shadow-2xl text-white relative overflow-hidden fade-in-up mt-[20%]">
+        <div className="glass-effect p-10 w-[90%] max-w-md mx-auto rounded-3xl shadow-2xl text-white relative overflow-hidden fade-in-up mt-[20%] lg:mt-[5%]">
           {/* Efecto shimmer de fondo */}
           {/* <div className="absolute inset-0 shimmer opacity-10 rounded-3xl"></div> */}
           

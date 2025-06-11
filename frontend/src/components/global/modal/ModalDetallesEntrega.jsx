@@ -1,19 +1,20 @@
 import { useState,  } from 'react';
-
-const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }) => {
+import Funciones from '../../../helpers/Funciones';
+import { db } from '../../../db/db';
+import { useConnection } from '../../../context/ConnectionContext';
+import api from '../../../services/apiService';
+import { useNavigate } from 'react-router';
+const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh} }) => {
+    
+    const { isOnline }            = useConnection()
+    
+    const navigate                = useNavigate()
     const [formData, setFormData] = useState({
         fechaEntrega: '',
         tipoEnvio: '',
         observaciones: '',
         destino: ''
     });
-
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSave(formData);
-        onClose();
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,6 +23,82 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }
             [name]: value
         }));
     };
+
+    const handleSendProccess = async () => {
+
+        if(formData.fechaEntrega === ''){
+            Funciones.alerta('Atención!', 'Debe ingresar una fecha de entrega', 'info', () => {});
+        }
+        else if(formData.tipoEnvio === ''){
+            Funciones.alerta('Atención!', 'Debe seleccionar un tipo de envio', 'info', () => {});
+        }
+        else if(formData.observaciones !== '' && formData.observaciones.length < 10){
+            Funciones.alerta('Atención!', 'Si escribe notificaciones estas deben superar los 10 caracteres', 'info', () => {});
+        }
+        else if(formData.destino === ''){
+            Funciones.alerta('Atención!', 'Debe seleccionar un destino', 'info', () => {});
+        }
+        else{
+            const proceso = (tipoProceso === 'pedidos') ? 'pedido' : 'cotización';
+            Funciones.confirmacion('Atención!', `¿Está seguro de sincronizar los datos ingresados en el ${proceso}?`, 'info', async () => {
+                const destinoSplit = formData.destino.split('-');
+                //valido campos
+                const dataGuardar = {
+                    tx_dir_cli_pos:destinoSplit[2],
+                    tx_dir_code_cli_pos: destinoSplit[0],
+                    tx_dir_add_cli_pos: destinoSplit[1],
+                    fechaEntrega: formData.fechaEntrega,
+                    tipoEnvio: formData.tipoEnvio,
+                    observaciones: formData.observaciones,
+                }
+                
+                //actualizo la data de los detalles finales
+                await db.cabeza.update(parseInt(idProceso), dataGuardar);
+                
+                // consulto la cabeza
+                const cabeza = await db.cabeza.get(parseInt(idProceso));
+                if (!cabeza) {
+                    throw new Error('No se encontró el registro de cabecera');
+                }
+
+                // consulto las lineas
+                const lineas = await db.lineas
+                    .where('in_id_cabeza')
+                    .equals(parseInt(idProceso))
+                    .toArray();
+
+                const dataSincroniza = {
+                    identificador: cabeza.id_consec || '',
+                    tx_contenido: {
+                        cabecera: cabeza,
+                        lineas: lineas
+                    }
+                }
+
+                //valido si estamos online para enviar a sincronizar
+                if(isOnline){
+                    const items = await api.post('api/ventaExterna/capturarPedido',dataSincroniza)
+                    if(items.continuar === 1 || items.continuar === 3){
+                        Funciones.alerta('Éxito!', items.mensaje, 'success', async() => {
+                            //actualizo el estado de sincronización
+                            await db.cabeza.update(parseInt(idProceso), { sync: 1 });
+                            handleRefresh()
+                        });
+                    }
+                    else{
+                         Funciones.alerta('Atención!', `${items.mensaje} `, 'info', async() => {
+                            //actualizo el estado de sincronización
+                            await db.cabeza.update(parseInt(idProceso), { sync: 0 });
+                            handleRefresh()
+                        });
+                    }
+                }else{
+                    Funciones.alerta('Atención!', 'No se pudo sincronizar, verifique su conexión a internet', 'error', () => {});
+                }
+                
+            })
+        }
+    }
 
     
 
@@ -48,7 +125,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="flex-1">
+                    
                         <div className="space-y-6">
                             {/* Fecha de Entrega */}
                             <div>
@@ -102,8 +179,8 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }
                                 >
                                     <option value="">Seleccione un destino</option>
 
-                                    {destinos && destinos.map((destino) => (
-                                        <option value="distribucion">{destino.Address}  - {destino.Street}</option>
+                                    {destinos && destinos.map((destino, index) => (
+                                        <option key={index} value={` ${destino.id_destinos}-${destino.Address}-${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
                                     ))}
 
                                 </select>
@@ -128,7 +205,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }
                         </div>
 
                         <div className="mt-6">
-                            <button
+                            <button onClick={handleSendProccess}
                                 type="submit"
                                 className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex justify-center items-center"
                             >
@@ -138,7 +215,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null }
                                 SINCRONIZAR {(titulo === 'pedidos') ? 'PEDIDO' : 'COTIZACIÓN'}
                             </button>
                         </div>
-                    </form>
+                    
                 </div>
             </div>
         </div>

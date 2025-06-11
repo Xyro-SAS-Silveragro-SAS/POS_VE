@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import ModalClientes from "../../components/global/modal/ModalClientes"
 import ModalProductos from "../../components/global/modal/ModalProductos"
 import ModalIA from "../../components/global/modal/ModalAI"
-import ModalTodosProductos from "../../components/global/modal/ModalTodosProductos"
 import { useAuth } from "../../context/AuthContext"
 import CardProducto from "../../components/ventaExterna/CardProducto"
 import Funciones from "../../helpers/Funciones"
@@ -22,7 +21,6 @@ const Proceso = () => {
     const {tipoProceso, idProceso}                                  = useParams()
     const [cargando, setCargando]                                   = useState(false)
     const [idPedidoActual, setPedidoActual]                         = useState(0)
-    const [showModalTodosProductos, setShowModalTodosProductos]     = useState(false);
     const [showClientes, setShowClientes]                           = useState(false);
     const [showProductos, setShowProductos]                         = useState(false);
     const [showIA, setShowIA]                                       = useState(false);
@@ -108,9 +106,15 @@ const Proceso = () => {
                     in_tipo:tipoProceso,
                     num_doc:0,
                     num_fac:0,
+                    CondicionPago:'',
                     tx_cod_sn:'',
                     tx_nom_sn_nombre:'',
                     tx_dir_cli_pos:'',
+                    tx_dir_code_cli_pos:"",
+                    tx_dir_add_cli_pos:"",
+                    fechaEntrega:"",
+                    tipoEnvio:"",
+                    observaciones:"",
                     tx_tel_cli_pos:"",
                     tx_cod_alm_pos:bodHeader,
                     in_subtot_pos:0,
@@ -175,6 +179,7 @@ const Proceso = () => {
                 tx_nom_sn_nombre: clienteSel.Nombre || '',
                 tx_dir_cli_pos: clienteSel.Direccion || '',
                 tx_tel_cli_pos: clienteSel.Telefono || '',
+                CondicionPago:clienteSel.CondicionPago
             };
             
             await db.cabeza.update(parseInt(idPedidoActual), cabezaActualizada);
@@ -184,9 +189,7 @@ const Proceso = () => {
         }
     };
 
-    const toggleModalTodosProductos = () => {
-        setShowModalTodosProductos(!showModalTodosProductos);
-    };
+
 
     const toggleClientes = () => {
         setShowClientes(!showClientes);
@@ -205,13 +208,10 @@ const Proceso = () => {
         setShowDetails(!showDetails);
     };
 
-    const items = Array(2).fill().map((_, index) => ({
-        id: 1234 + index,
-        nombre: 'ABONADORA SEMBRADORA X 12 KILOS '+index,
-        cantidad:0,
-        codigoItem:'ACCGRAE35N',
-        sync: (index % 4 === 0)? false: true
-    }));
+    const handleRefresh = () => {
+        navigate(`/home`);
+    }
+
 
     // Función para obtener el título
     const getTitulo = () => {
@@ -234,26 +234,44 @@ const Proceso = () => {
             Funciones.alerta("Atención","Debe seleccionar una cantidad para agregar al carrito, ya sea cantidad normal o bonificada","info",()=>{})
         }
         else{
-            const dataGuardarLinea = {
-                in_id_cabeza:cabezaPedido.id,
-                ItemCode:item.ItemCode,
-                Articulo:item.Articulo,
-                Precio:item.Precio,
-                CantSolicitada:item.CantSolicitada,
-                CantBonificada:item.CantBonificada,
-                Cantidad:item.Cantidad,
-                CodigoBarras:item.CodigoBarras,
-                in_dto_pos:0,
-                Impuesto:item.Impuesto,
-                PorcImpto:item.PorcImpto,
-                in_estado_lin_pos:0,
-                dt_fecha_reg: new Date(),
-                tx_usua_reg:currentUser ? currentUser.id_usuario : '',
-                CodAlmacen:item.CodAlmacen,
-                sync:0,
+            //busco si ya ese producto esta en el carrito
+            const existe = await db.lineas.where('in_id_cabeza').equals(cabezaPedido.id).and(linea => linea.ItemCode === item.ItemCode).first();
+            if(existe){
+                //actualizo las cantidades nada mas
+                const dataUpdate = { 
+                    CantSolicitada: parseInt(existe.CantSolicitada) + parseInt(item.CantSolicitada), 
+                    CantBonificada: parseInt(existe.CantBonificada) + parseInt(item.CantBonificada) 
+                };
+                //actualizo las cantidades en la base de datos
+                await db.lineas.update(parseInt(existe.id), dataUpdate);
+                await getListaItems()
             }
-            await db.lineas.add(dataGuardarLinea);
-            await getListaItems()
+            else{
+                const dataGuardarLinea = {
+                    in_id_cabeza:cabezaPedido.id,
+                    ItemCode:item.ItemCode,
+                    Articulo:item.Articulo,
+                    Precio:item.Precio,
+                    CantSolicitada:item.CantSolicitada,
+                    CantBonificada:item.CantBonificada,
+                    Cantidad:item.Cantidad,
+                    CodigoBarras:item.CodigoBarras,
+                    in_dto_pos:0,
+                    Impuesto:item.Impuesto,
+                    PorcImpto:item.PorcImpto,
+                    ListaPrecio:item.ListaPrecio,
+                    Comprometido:item.Comprometido,
+                    in_estado_lin_pos:0,
+                    dt_fecha_reg: new Date(),
+                    tx_usua_reg:currentUser ? currentUser.id_usuario : '',
+                    CodAlmacen:item.CodAlmacen,
+                    sync:0,
+                }
+                await db.lineas.add(dataGuardarLinea);
+                await getListaItems()
+            }
+
+            
             agregadoCarrito()
 
              setTimeout(async () => {
@@ -396,21 +414,24 @@ const Proceso = () => {
 
     return (
         <>
-            <TopBarProceso titulo={getTitulo()} toggleIA={toggleIA} listaCarrito={listaCarrito} tipoProceso={tipoProceso} idProceso={idProceso} startTour={startTour} setShowDetallesEntrega={abreModalDetallesEntrega}/>
+            <TopBarProceso titulo={getTitulo()} toggleIA={toggleIA} listaCarrito={listaCarrito} tipoProceso={tipoProceso} idProceso={idProceso} startTour={startTour} setShowDetallesEntrega={abreModalDetallesEntrega} cabezaPedido={cabezaPedido}/>
             
             <div className="w-full lg:w-[54%] md:p-10 m-auto  mt-[22%] lg:mt-[3%] md:mt-[5%] flex flex-wrap text-gray-700 relative">
                 <div className="shadow-lg w-full">
                     <div className="w-full px-[5%] lg:px-[3%] mb-4 font-bold">
                         <div className="w-full flex items-center justify-between text-gray-500">
-                            <small>Escoge un cliente</small>
+                            <small>CLIENTE</small>
                         </div>
                         <div className="flex items-center justify-between clienteSeleccionado">
                             {
                                 (cabezaPedido.tx_nom_sn_nombre && cabezaPedido.tx_nom_sn_nombre !== "") ? cabezaPedido.tx_nom_sn_nombre : "SELECCIONA UN CLIENTE"
                             }
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer agregaCliente" onClick={toggleClientes}>
-                                <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
-                            </svg>
+
+                            {cabezaPedido && cabezaPedido.sync === 0 && (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer agregaCliente" onClick={toggleClientes}>
+                                    <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                                </svg>
+                            )}
 
                         </div>
                     </div>
@@ -423,9 +444,11 @@ const Proceso = () => {
                             {/* <span className="bg-red-700 p-2 rounded-full text-white w-[30px] h-[30px] flex items-center justify-center ml-2">{listaCarrito.length}</span> */}
                         </h2>
 
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"  className=" col-span-1 size-8 cursor-pointer agregaProductos" onClick={toggleProductos}>
-                            <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
-                        </svg>
+                        {cabezaPedido && cabezaPedido.sync === 0 && (
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"  className=" col-span-1 size-8 cursor-pointer agregaProductos" onClick={toggleProductos}>
+                                <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
+                            </svg>
+                        )}
 
                     </div>
                 </div>
@@ -435,7 +458,7 @@ const Proceso = () => {
 
                         {listaCarrito && listaCarrito.length > 0 ? (
                             listaCarrito.map((item, index) => (
-                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true}/>
+                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync}/>
                         ))
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
@@ -520,10 +543,6 @@ const Proceso = () => {
             <ModalIA showIA={showIA} toggleIA={toggleIA}/>
             {/* fin del modal IA */}
 
-            {/* modal todos lo productos */}
-            <ModalTodosProductos toggleModalTodosProductos={toggleModalTodosProductos} items={items} showModalTodosProductos={showModalTodosProductos}/>
-            {/* fin modal todos lo productos */}
-
         
             <ModalDetallesEntrega 
                 isOpen={showDetallesEntrega} 
@@ -531,6 +550,9 @@ const Proceso = () => {
                 onSave={handleSaveDetalles}
                 titulo={tipoProceso?.toLowerCase()}
                 destinos = {destinos}
+                idProceso={idProceso}
+                tipoProceso = {tipoProceso}
+                handleRefresh={handleRefresh}
             />
         </>
     )

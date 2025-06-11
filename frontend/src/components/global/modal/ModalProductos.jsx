@@ -78,7 +78,7 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
         
                     <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-auto mt-[90px]">
                         {productos && productos.length > 0 && productos.map((item, index) => (
-                            <CardProducto item={item} key={index} handleAddToCar={handleAddToCar}/>
+                            <CardProducto item={item} key={index} handleAddToCar={handleAddToCar} sync={0}/>
                         ))}
 
 

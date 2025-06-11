@@ -49,7 +49,9 @@ const Home = () => {
     const getListaProcesos = async () => {
       const lista = await db.cabeza.where('in_tipo')
                                    .equals(botonActivo.toLowerCase())
-                                   .toArray()
+                                   .reverse() 
+                                   .sortBy('dt_fecha_reg')
+                                   
       const dataLista = lista.map((item) => {
         return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
       }).filter(item => item !== null)                           
@@ -214,9 +216,7 @@ const Home = () => {
                   <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center ">
                   {pedido.sync === 1 ? (
                       // chulo
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-10">
-                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
-                      </svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-cloud-check-icon lucide-cloud-check size-10"><path d="m17 15-5.5 5.5L9 18"/><path d="M5 17.743A7 7 0 1 1 15.71 10h1.79a4.5 4.5 0 0 1 1.5 8.742"/></svg>
                     ) : (
                       // nube
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-10">
