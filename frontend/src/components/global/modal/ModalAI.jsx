@@ -1,30 +1,159 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
 const ModalIA = ({showIA = false, toggleIA = null}) => {
     
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [responses, setResponses] = useState([]);
+    const [isSupported, setIsSupported] = useState(true);
+    const recognitionRef = useRef(null);
+    const silenceTimerRef = useRef(null);
+    const lastSpeechTimeRef = useRef(null);
+
+    // Inicializar el reconocimiento de voz
+    useEffect(() => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognitionRef.current = new SpeechRecognition();
+            
+            // Configuración para español latinoamericano
+            recognitionRef.current.lang = 'es-ES'; // También puedes usar 'es-MX', 'es-CO', 'es-AR', etc.
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.interimResults = true;
+            recognitionRef.current.maxAlternatives = 1;
+
+            // Eventos del reconocimiento
+            recognitionRef.current.onstart = () => {
+                console.log('Reconocimiento de voz iniciado');
+            };
+
+            recognitionRef.current.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                const currentTranscript = finalTranscript + interimTranscript;
+                setTranscript(currentTranscript);
+                
+                // Si hay texto, actualizar el tiempo de la última voz detectada
+                if (currentTranscript.trim()) {
+                    lastSpeechTimeRef.current = Date.now();
+                    
+                    // Limpiar el timer anterior si existe
+                    if (silenceTimerRef.current) {
+                        clearTimeout(silenceTimerRef.current);
+                    }
+                    
+                    // Configurar nuevo timer para detectar silencio (2 segundos)
+                    silenceTimerRef.current = setTimeout(() => {
+                        if (isListening && recognitionRef.current) {
+                            console.log('Silencio detectado, deteniendo grabación');
+                            stopListening();
+                        }
+                    }, 2000);
+                }
+            };
+
+            recognitionRef.current.onerror = (event) => {
+                console.error('Error en reconocimiento de voz:', event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    alert('Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.');
+                }
+                setIsListening(false);
+            };
+
+            recognitionRef.current.onend = () => {
+                console.log('Reconocimiento de voz terminado');
+                setIsListening(false);
+                
+                // Limpiar timer de silencio
+                if (silenceTimerRef.current) {
+                    clearTimeout(silenceTimerRef.current);
+                    silenceTimerRef.current = null;
+                }
+            };
+
+        } else {
+            setIsSupported(false);
+            console.log('Reconocimiento de voz no soportado en este navegador');
+        }
+
+        // Cleanup
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+            }
+        };
+    }, []);
 
     const startListening = () => {
-        setIsListening(true);
-        // Aquí iría la lógica para activar el micrófono
-        setTranscript('');
+        if (!isSupported) {
+            alert('Tu navegador no soporta reconocimiento de voz. Prueba con Google Chrome o Microsoft Edge.');
+            return;
+        }
+
+        if (recognitionRef.current && !isListening) {
+            setTranscript('');
+            setIsListening(true);
+            
+            try {
+                recognitionRef.current.start();
+            } catch (error) {
+                console.error('Error al iniciar reconocimiento:', error);
+                setIsListening(false);
+            }
+        }
     };
 
     const stopListening = () => {
-        setIsListening(false);
-        // Aquí iría la lógica para detener el micrófono y procesar el audio
-        if (transcript) {
-            // Simular respuesta de la IA
-            setTimeout(() => {
-                setResponses([...responses, 
-                    { type: 'user', text: transcript },
-                    { type: 'ai', text: '¡Hola! Soy ANA, tu asistente virtual. ¿En qué puedo ayudarte hoy?' }
-                ]);
-                setTranscript('');
-            }, 1000);
+        if (recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+            
+            // Limpiar timer de silencio
+            if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+                silenceTimerRef.current = null;
+            }
+            
+            // Procesar el texto capturado
+            if (transcript.trim()) {
+                // Simular respuesta de la IA
+                setTimeout(() => {
+                    setResponses(prev => [...prev, 
+                        { type: 'user', text: transcript.trim() },
+                        { type: 'ai', text: `¡Hola! Escuché que dijiste: "${transcript.trim()}". Soy ANA, tu asistente virtual. ¿En qué más puedo ayudarte?` }
+                    ]);
+                    setTranscript('');
+                }, 500);
+            }
         }
     };
+
+    // Limpiar el reconocimiento cuando se cierre el modal
+    useEffect(() => {
+        if (!showIA && recognitionRef.current && isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+            setTranscript('');
+            
+            // Limpiar timer de silencio
+            if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+                silenceTimerRef.current = null;
+            }
+        }
+    }, [showIA, isListening]);
 
     return (
         <>
@@ -60,7 +189,12 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
                                         <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
                                         <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
                                     </svg>
-                                    <p className="text-center">Presiona el botón del micrófono para hablar con ANA</p>
+                                    <p className="text-center">
+                                        {isSupported 
+                                            ? "Presiona el botón del micrófono para hablar con ANA" 
+                                            : "Reconocimiento de voz no disponible en este navegador"
+                                        }
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -75,8 +209,13 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
                             )}
                             
                             {isListening && (
-                                <div className="mt-4 p-3 bg-gray-200 rounded-lg">
-                                    <p className="text-gray-500 italic">Escuchando: {transcript || "..."}</p>
+                                <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded-lg">
+                                    <p className="text-blue-700">
+                                        <span className="font-semibold">Escuchando:</span> {transcript || "Habla ahora..."}
+                                    </p>
+                                    <p className="text-xs text-blue-500 mt-1">
+                                        La grabación se detendrá automáticamente tras 2 segundos de silencio
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -86,7 +225,13 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
                             {!isListening ? (
                                 <button 
                                     onClick={startListening}
-                                    className="w-16 h-16 bg-[#546C4C] rounded-full flex items-center justify-center shadow-lg hover:bg-[#3e5038] transition-colors"
+                                    disabled={!isSupported}
+                                    className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-colors ${
+                                        isSupported 
+                                            ? 'bg-[#546C4C] hover:bg-[#3e5038] cursor-pointer' 
+                                            : 'bg-gray-400 cursor-not-allowed'
+                                    }`}
+                                    title={isSupported ? "Iniciar grabación" : "Reconocimiento de voz no disponible"}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-8">
                                         <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
@@ -97,6 +242,7 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
                                 <button 
                                     onClick={stopListening}
                                     className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-colors animate-pulse"
+                                    title="Detener grabación"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-8">
                                         <path fillRule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clipRule="evenodd" />
@@ -105,8 +251,15 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
                             )}
                             
                             <button 
-                                className="text-sm text-gray-500 hover:text-gray-700"
+                                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                                 onClick={() => {
+                                    if (recognitionRef.current && isListening) {
+                                        recognitionRef.current.stop();
+                                    }
+                                    if (silenceTimerRef.current) {
+                                        clearTimeout(silenceTimerRef.current);
+                                        silenceTimerRef.current = null;
+                                    }
                                     setResponses([]);
                                     setTranscript('');
                                     setIsListening(false);
