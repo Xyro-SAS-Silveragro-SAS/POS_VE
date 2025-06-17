@@ -23,13 +23,12 @@ createRoot(root).render(
         <TourContextProvider>
             <AuthProvider>
                 <BrowserRouter>
-                      <Routes>
-                        <Route path="/" element={<Login />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/home" element={<Home />} />
-                        <Route path="/proceso/:tipoProceso/:idProceso?" element={<Proceso />} />
-                      </Routes>
-                      <ReloadPrompt />
+                    <Routes>
+                      <Route path="/" element={<Login />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/home" element={<Home />} />
+                      <Route path="/proceso/:tipoProceso/:idProceso?" element={<Proceso />} />
+                    </Routes>
                 </BrowserRouter>
             </AuthProvider>
         </TourContextProvider>

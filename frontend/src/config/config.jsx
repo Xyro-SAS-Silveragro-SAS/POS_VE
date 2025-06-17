@@ -7,3 +7,5 @@ export const API_SL = import.meta.env.VITE_API_SL || '';
 export const USER_TOKEN = import.meta.env.VITE_USER_TOKEN || '';
 export const TOKEN = import.meta.env.VITE_TOKEN || '';
 export const API_MTS_OLD = import.meta.env.VITE_API_MTS_OLD || '';
+export const APIKEY_GEMINI = import.meta.env.VITE_APIKEY_GEMINI || '';
+

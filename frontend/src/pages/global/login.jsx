@@ -2,8 +2,6 @@ import { VERSION, API_MTS, TOKEN, USER_TOKEN } from "../../config/config"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import api from "../../services/apiService"
-import ApiSL from "../../services/apiSL";
-import ApiMTS from "../../services/apiMts";
 import { db } from "../../db/db"
 import { useConnection } from "../../context/ConnectionContext"
 import { useAuth } from "../../context/AuthContext"
@@ -13,7 +11,6 @@ import logo from "../../assets/img/logo.png"
 import xyro from "../../assets/img/xyro.png"
 import Mensajes from "../../data/Mensajes"
 import datosInteresantes from "../../data/Interesantes"
-import { ClipLoader } from 'react-spinners';
 import PreloaderLogin from "../../components/global/PreloaderLogin"
 
 const Login = () => {
@@ -65,13 +62,15 @@ const Login = () => {
           // Consultar la API para obtener los almacenes
           const almacenes = await api.get('api/bodegas')
           if (almacenes.datos && almacenes.datos.length > 0) {
-                //pongo el listado de almacenes en el state
-                setAlmacenes(almacenes.datos)
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
                 await db.table('almacenes').clear()
                 // Si el usuario tiene bodegas, las guardamos como parte del objeto
                 await db.almacenes.bulkAdd(almacenes.datos)
+                //pongo los almacenes de la db
+                await db.almacenes.toArray().then((almacenes) => {
+                    setAlmacenes(almacenes)
+                })
             }
             setCargando(false)
         }
@@ -104,7 +103,7 @@ const Login = () => {
         try {
           setCargando(true)
           // Consultar la API para obtener los almacenes
-          const items = await api.get('api/inventario/bodega/BOD')
+          const items = await api.get('api/inventario/bodega/'+bodega)
           if (items.datos && items.datos.length > 0) {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api

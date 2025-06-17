@@ -124,7 +124,7 @@ const Proceso = () => {
                     dt_fecha_reg:new Date(),
                     tx_usua:currentUser ? currentUser.id_usuario : '',
                     tx_comentarios:"",
-                    tx_nom_emp:'-Ningún empleado del departamento de ventas-',
+                    tx_nom_emp:currentUser ? currentUser.tx_empleado_sap : '',
                     in_cod_emp:0,
                     resp_api:'',
                     in_lst_precio:0,
