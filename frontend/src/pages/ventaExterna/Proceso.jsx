@@ -540,7 +540,7 @@ const Proceso = () => {
             {/* fin del modal productos */}
 
             {/* Modal IA*/}
-            <ModalIA showIA={showIA} toggleIA={toggleIA}/>
+            <ModalIA showIA={showIA} toggleIA={toggleIA} handleAddToCar={handleAddToCar} setClienteSel={setClienteSel}/>
             {/* fin del modal IA */}
 
         

@@ -18,7 +18,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     useEffect(() => {
         // Establecer la URL de la imagen
         if (producto && producto.ItemCode) {
-            setImageUrl(`https://demoapi.xyroposadmin.com/api/imgUnItem/${producto.ItemCode}`)
+            setImageUrl(`https://api.xyroposadmin.com/api/imgUnItem/${producto.ItemCode}`)
         }
     }, [producto])
 
@@ -205,7 +205,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             {/* Modal de Zoom de Imagen */}
             {showImageModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeImageModal}>
-                    <div className="relative max-w-4xl max-h-full">
+                    <div className="relative max-w-full max-h-full bg-white">
                         {/* Botón de cerrar */}
                         <button 
                             onClick={closeImageModal}
@@ -220,7 +220,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                         <img 
                             src={imageUrl} 
                             alt={producto.Articulo || "Producto ampliado"}
-                            className="max-w-full max-h-full object-contain rounded-t-lg shadow-2xl"
+                            className="w-[70%] max-h-full object-contain rounded-t-lg m-auto"
                             onError={handleImageError}
                             onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer clic en la imagen
                         />

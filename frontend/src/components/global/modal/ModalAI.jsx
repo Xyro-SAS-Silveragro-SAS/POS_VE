@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleGenAI } from '@google/genai';
-import { APIKEY_GEMINI } from "../../../config/config";
+import { APIKEY_GEMINI, API_VECTOR, OLLAMA_URL, MODEL_NAME } from "../../../config/config";
+import axios from "axios";
+import Funciones from "../../../helpers/Funciones";
+import { db } from "../../../db/db";
 
 const gemini    = new GoogleGenAI({ apiKey: APIKEY_GEMINI });
 
-const ModalIA = ({showIA = false, toggleIA = null}) => {
+const ModalIA = ({showIA = false, toggleIA = null, handleAddToCar=null, setClienteSel=null }) => {
     
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -20,7 +23,7 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
             recognitionRef.current = new SpeechRecognition();
             
             // Configuración para español
-            recognitionRef.current.lang = 'es-ES';
+            recognitionRef.current.lang = 'es-MX';
             recognitionRef.current.continuous = true;
             recognitionRef.current.interimResults = true;
             recognitionRef.current.maxAlternatives = 1;
@@ -158,13 +161,16 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
 
         const prompt = `Actua como un asesor de ventas al cual le van a solicitar realizar un pedido de productos. Analiza el texto que te proporcionare en el cual se habla de un pedido que están solicitando.
 
-            Ten en cuenta que hay productos que pueden ser complicados en la pronunciación del cliente, adjunto una lista de palabras que pueden ayudar a mejorar la busqueda: bravecto, aplaws, nexgard
 
             Requerimientos:
 
-            - Identifica el nombre del cliente
-            - Identifica la lista de productos que se nombran en el texto. Esta lista es de productos para mascotas
-            - Identifica la cantidad de producto que se solicita para cada producto
+            * Identifica el nombre del cliente, si o identificas cliente pon la palabra: desconocido
+            * Identifica la lista de productos que se nombran en el texto. Esta lista es de productos para mascotas
+            * Identifica la cantidad de producto que se solicita para cada producto
+            * **Utiliza la siguiente lista de palabras clave SÓLO para corregir o asimilar productos que creas que el cliente intentó pronunciar de manera similar.**
+            * **NO agregues ninguna palabra de esta lista a la salida JSON a menos que esté CLARAMENTE implicada o pronunciada de forma similar en el texto del usuario.**
+            * **Esta lista es una referencia fonética/ortográfica para ayudarte a interpretar nombres difíciles, NO una lista de productos a incluir por defecto.**
+            * **Lista de Referencia:** bravecto, applaws, nexgard, taste of the wild, hapatogan, agility gold, purina, hills, royal canin, proplan, monello, dog chow, cat chow, felix, friskies, whiskas, cânida, nutra nugget, nutra gold, mira, nupec, biopet, maxi can, maxicat, donkan, agrosuper, masterdog, mastercat, ricocat, ricocan.
 
 
             Respuesta: Formato json con la siguiente estructura:
@@ -185,41 +191,147 @@ const ModalIA = ({showIA = false, toggleIA = null}) => {
             - no des explicaciones
             - no des recomendaciones
             - no resumen
+            - Para las cantidades solo agrega el numero, no incluyas palabras.
+            - si el usuario no asigna cantidad agrega 1 por defecto
 
 
             Texto del usuario: ${text};
         `;
 
-        const response = await gemini.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: prompt
-        }); 
+        //uso de gemini
+        // const response = await gemini.models.generateContent({
+        //     model: "gemini-2.0-flash",
+        //     contents: prompt
+        // }); 
 
-        const textoSalida = formatResponse(response.text.trim());
-        console.log(textoSalida);
-        return response.text.trim();
+        //uso de ollama con el modelo llama3.2:latest
+        try {
+            const response = await axios.post(`${OLLAMA_URL}api/generate`, {
+            model: MODEL_NAME,
+            prompt: prompt,
+            stream: false
+            });
+
+
+            const textoSalida = formatResponse(response.data.response.trim());
+            const dataBuscar  = {
+                query: JSON.parse(formatResponse(textoSalida)),
+                limit:1
+            }
+            const busqueda      = await axios.post(`${API_VECTOR}api/buscar`, dataBuscar); 
+            const dataRespuesta = busqueda.data;
+
+            if(dataRespuesta.success){
+                //verifico que venga la posicion resulta
+                if(dataRespuesta.results){
+
+                     if(dataRespuesta.results.cliente){
+                        console.log("Cliente")
+                        //busco el cliente con la respuesta que me haya dado la IA
+                        try{
+                            db.clientes
+                            .where('Codigo')
+                            .equals(dataRespuesta.results.cliente.Codigo)
+                            .toArray()
+                            .then((cliente) => {
+                                console.log(cliente)
+                                setClienteSel(cliente[0]);
+                            })
+                        }
+                        catch(error){
+                            console.error('Error general:', error);
+                            Funciones.alerta(
+                                "Error",
+                                "Ocurrió un error al procesar el producto",
+                                "error",
+                                () => {}
+                            );
+                        }
+                    }
+
+                    //capturo los productos para buscarlos en la base de datos.
+                    if(dataRespuesta.results.productos && dataRespuesta.results.productos.length > 0){
+                        //busco los productos en la base de datos para empezar a agregarlos al carrito
+                        dataRespuesta.results.productos.map((item) => {
+                            const codigoProducto    =   item.payload.ItemCode
+                            const cantidad          =   item.payload.cantidad
+                            console.log(`Producto as buscar localmente: ${codigoProducto}`)
+                            console.log(`Cantidad Producto as buscar localmente: ${cantidad}`)
+
+                            try {
+                            db.items
+                                .where('ItemCode')
+                                .equals(codigoProducto)
+                                .toArray()
+                                .then((items) => {
+                                    if (items && items.length > 0) {
+                                        handleAddToCar({
+                                            ...items[0],
+                                            CantSolicitada: cantidad
+                                        });
+                                    } else {
+                                        Funciones.alerta(
+                                            "Atención",
+                                            `No se encontró el producto ${codigoProducto} en la base de datos local`,
+                                            "warning",
+                                            () => {}
+                                        );
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error al buscar producto:', error);
+                                    Funciones.alerta(
+                                        "Error",
+                                        "No se pudo agregar el producto al carrito",
+                                        "error",
+                                        () => {}
+                                    );
+                                });
+                        } catch (error) {
+                            console.error('Error general:', error);
+                            Funciones.alerta(
+                                "Error",
+                                "Ocurrió un error al procesar el producto",
+                                "error",
+                                () => {}
+                            );
+                        }
+                            
+                        })
+                    }
+                    
+                   
+
+                    toggleIA()
+                }
+                else{
+                    Funciones.alerta("Atención","Ana no ha podido encontrar productos relacionados. Paso 1","info",()=>{})
+                }
+            }
+            else{
+                Funciones.alerta("Atención","Ana no ha podido encontrar productos relacionados. Paso 2","info",()=>{})
+            }
+
+            //return response.text.trim();
+
+        } catch (error) {
+            console.error('Error consultando DeepSeek:', error);
+            throw error;
+        }
+
+        
     };
 
 
     const formatResponse = (text) => {
-    // Asegurarse de que los párrafos estén correctamente etiquetados
-    let formattedText = text;
-    
-    // Asegurarse de que el texto tenga etiquetas de párrafo
-    if (!formattedText.includes('<p>')) {
-      formattedText = `<p>${formattedText}</p>`;
-      // Reemplazar saltos de línea dobles con cierre y apertura de párrafo
-      formattedText = formattedText.replace(/\n\n/g, '</p><p>');
-    }
-    
-    // Mejorar la presentación de listas
-    formattedText = formattedText.replace(/<li>/g, '<li class="ai-list-item">');
-    
-    // Mejorar la presentación de tablas
-    formattedText = formattedText.replace(/<table>/g, '<table class="ai-table">');
-    
-    return formattedText;
-  };
+        // Remove backticks, 'json' word and any whitespace at the start/end
+        let formattedText = text
+            .replace(/`/g, '')          // Remove backticks
+            .replace(/^json\s*/i, '')   // Remove 'json' at the start (case insensitive)
+            .trim();                    // Remove extra whitespace
+            
+        return formattedText;
+    };
 
     // Limpiar el reconocimiento cuando se cierre el modal
     useEffect(() => {

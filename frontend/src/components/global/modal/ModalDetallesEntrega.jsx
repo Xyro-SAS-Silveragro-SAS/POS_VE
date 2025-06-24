@@ -107,7 +107,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
     return (
         <div className={`fixed inset-0 bg-black/50 z-50 transition-opacity`}>
             <div 
-                className="fixed bottom-0 inset-x-0 h-[75vh] bg-white rounded-t-3xl transition-transform duration-600 transform w-full lg:w-[50%] md:w-[90%] m-auto"
+                className="fixed bottom-0 inset-x-0 h-[90vh] bg-white rounded-t-3xl transition-transform duration-600 transform w-full lg:w-[50%] md:w-[90%] m-auto"
                 style={{
                     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)'
                 }}

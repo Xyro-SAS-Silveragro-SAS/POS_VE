@@ -12,10 +12,12 @@ const server = http.createServer(app);
 const { QdrantClient } = require('@qdrant/qdrant-js');
 
 // Inicializa el cliente de Qdrant
-const qdrantClient = new QdrantClient({url: process.env.QDRANT_HOST});
+const qdrantClient = new QdrantClient({
+    url: process.env.QDRANT_HOST,
+    apiKey: process.env.QDRANT_API_KEY
+});
 
 const COLLECTION_PRODUCTOS_NAME = 'productos';
-const COLLECTION_CLIENTES_NAME = 'clientes';
 
 // Pipeline de embeddings usando @xenova/transformers
 let embeddingPipeline = null;
@@ -101,52 +103,30 @@ async function ajustaDataProductos(data, batchSize = 50) {
     
     return salida;
 }
-async function ajustaDataCliente(data, batchSize = 50) {
-    // Procesa los productos de forma secuencial para evitar sobrecargar el modelo
-    const salida = [];
-    
-    for (const item of data) {
-        try {
-            const token = await generateEmbedding(item.Llave);
-            salida.push({
-                Codigo: item.Codigo,
-                Nombre: item.Nombre,
-                Llave: item.Llave,
-                token: token
-            });
-        } catch (error) {
-            console.error(`Error procesando item ${item.Codigo}:`, error);
-            // Continúa con el siguiente item en caso de error
-        }
-    }
-    
-    return salida;
-}
 
 // Función para procesar y almacenar productos en lotes
-async function procesarDatosPorLotes(productos, batchSize = 100, tipo = 'productos') {
+async function procesarProductosEnLotes(productos, batchSize = 100) {
     const totalProductos = productos.length;
     let procesados = 0;
     const resultadosLotes = [];
 
-    console.log(`Iniciando procesamiento de ${totalProductos} ${tipo} en lotes de ${batchSize}`);
+    console.log(`Iniciando procesamiento de ${totalProductos} productos en lotes de ${batchSize}`);
 
     for (let i = 0; i < totalProductos; i += batchSize) {
         const lote = productos.slice(i, i + batchSize);
-        console.log(`Procesando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(totalProductos/batchSize)} (${lote.length} ${tipo})`);
+        console.log(`Procesando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(totalProductos/batchSize)} (${lote.length} productos)`);
         
         try {
             // Procesar embeddings para el lote
-            const dataConEmbedings = (tipo === 'productos') ? await ajustaDataProductos(lote): await ajustaDataCliente(lote);
-
+            const productosConEmbeddings = await ajustaDataProductos(lote);
             
             // Insertar lote en Qdrant
-            if (dataConEmbedings && dataConEmbedings.length > 0) {
-                await insertarLoteEnQdrant(dataConEmbedings, i,tipo);
-                procesados += dataConEmbedings.length;
+            if (productosConEmbeddings.length > 0) {
+                await insertarLoteEnQdrant(productosConEmbeddings, i);
+                procesados += productosConEmbeddings.length;
                 resultadosLotes.push({
                     lote: Math.floor(i/batchSize) + 1,
-                    procesados: dataConEmbedings.length,
+                    procesados: productosConEmbeddings.length,
                     totalProcesados: procesados
                 });
             }
@@ -180,7 +160,7 @@ apiRouter.get('/', async(req, res) => {
     res.send('ApiREST Qdrant con @xenova/transformers');
 });
 
-apiRouter.get('/procesaProductos', async(req, res) => {
+apiRouter.get('/procesaClientes', async(req, res) => {
     try {
         //pido el token del api de SL
         const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
@@ -191,7 +171,7 @@ apiRouter.get('/procesaProductos', async(req, res) => {
         // Guardamos el token en sessionStorage
         if (resp_token.data && resp_token.data.token) {
             const token = resp_token.data.token;
-            const response = await axios.get(`${process.env.API_MTS_NEW}inventario/bodega/BOD`, {
+            const response = await axios.get(`https://demoapi.mts.xyroapps.com.co/api/inventario/bodega/BOD`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
@@ -206,7 +186,7 @@ apiRouter.get('/procesaProductos', async(req, res) => {
             await ensureCollection(COLLECTION_PRODUCTOS_NAME);
             
             // Procesar productos en lotes
-            const resultado = await procesarDatosPorLotes(productos, 100); // Lotes de 100 productos
+            const resultado = await procesarProductosEnLotes(productos, 100); // Lotes de 100 productos
             
             res.json({
                 success: true,
@@ -220,61 +200,11 @@ apiRouter.get('/procesaProductos', async(req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error en procesaProductos:', error);
+        console.error('Error en procesaClientes:', error);
         res.status(500).json({
             success: false,
             message: 'Error interno del servidor',
-            error: error
-        });
-    }
-});
-
-
-apiRouter.get('/procesaClientes', async(req, res) => {
-    try {
-        //pido el token del api de SL
-        const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
-          user: process.env.USER_TOKEN,
-          token: process.env.TOKEN
-        });
-        
-        // Guardamos el token en sessionStorage
-        if (resp_token.data && resp_token.data.token) {
-            const token = resp_token.data.token;
-            const response = await axios.get(`${process.env.API_MTS_NEW}clientes/vexterna`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            const clientes = response.data.datos;
-            console.log(`Recibidos ${clientes.length} clientes para procesar`);
-            
-            //creo la coleccion de clientes
-            await ensureCollection(COLLECTION_CLIENTES_NAME);
-            
-            // Procesar productos en lotes
-            const resultado = await procesarDatosPorLotes(clientes, 100, 'clientes'); // Lotes de 100 productos
-            
-            res.json({
-                success: true,
-                message: `Procesamiento completado`,
-                resultado: resultado
-            });
-        } else {
-            res.status(401).json({
-                success: false,
-                message: 'No se pudo obtener el token de autenticación'
-            });
-        }
-    } catch (error) {
-        console.error('Error en procesaProductos:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error interno del servidor',
-            error: error
+            error: error.message
         });
     }
 });
@@ -336,53 +266,13 @@ apiRouter.post('/buscar', async(req, res) => {
             salidaProductos.push(...modifiedResult);
             cont++
         }
-        let ClienteSalida = "";
-        //Si viene el cliente lo busco en la base de datos
-        if (query.cliente && query.cliente !== 'desconocido') {
-        // Si parece un código exacto, busca por coincidencia exacta
-        if (query.cliente.trim()) {
-            // Buscar por código exacto en Qdrant
-            const searchResult = await qdrantClient.scroll(COLLECTION_CLIENTES_NAME, {
-                filter: {
-                    must: [
-                        { key: 'Codigo', match: { value: query.cliente.trim() } }
-                    ]
-                },
-                limit: 1,
-                with_payload: true
-            });
-            if (searchResult.length > 0) {
-                ClienteSalida = searchResult[0].payload;
-            } else {
-                // Si no hay coincidencia exacta, usa embeddings
-                const queryEmbeddingclient = await generateEmbedding(query.cliente);
-                const searchClientResult = await qdrantClient.search(COLLECTION_CLIENTES_NAME, {
-                    vector: queryEmbeddingclient,
-                    limit: 1,
-                    with_payload: true
-                });
-                ClienteSalida = searchClientResult[0]?.payload || null;
-            }
-        } else {
-            // Búsqueda semántica normal
-            const queryEmbeddingclient = await generateEmbedding(query.cliente);
-            const searchClientResult = await qdrantClient.search(COLLECTION_CLIENTES_NAME, {
-                vector: queryEmbeddingclient,
-                limit: 1,
-                with_payload: true
-            });
-            ClienteSalida = searchClientResult[0]?.payload || null;
-        }
-    } else {
-        ClienteSalida = query.cliente;
-    }
         
         if(cont === query.productos.length){
             res.json({
                 success: true,
                 query: query,
                 results: {
-                    cliente:ClienteSalida,
+                    cliente:query.cliente,
                     productos:salidaProductos
                 }
             });
@@ -399,42 +289,24 @@ apiRouter.post('/buscar', async(req, res) => {
 });
 
 
-async function insertarLoteEnQdrant(data, offset = 0, tipo = 'productos') {
+async function insertarLoteEnQdrant(productos, offset = 0) {
     try {
-        if(tipo === 'productos'){ //productos
-            const points = data.map((producto, index) => ({
-                id: offset + index + 1,
-                vector: producto.token,
-                payload: {
-                    ItemCode: producto.ItemCode,
-                    Articulo: producto.Articulo,
-                    LlaveArt: producto.LlaveArt
-                }
-            }));
+        const points = productos.map((producto, index) => ({
+            id: offset + index + 1,
+            vector: producto.token,
+            payload: {
+                ItemCode: producto.ItemCode,
+                Articulo: producto.Articulo,
+                LlaveArt: producto.LlaveArt
+            }
+        }));
 
-            await qdrantClient.upsert(COLLECTION_PRODUCTOS_NAME, {
-                wait: true,
-                points: points
-            });
-        }
-        else{ //clientes
-             const points = data.map((item, index) => ({
-                id: offset + index + 1,
-                vector: item.token,
-                payload: {
-                    Codigo: item.Codigo,
-                    Nombre: item.Nombre,
-                    Llave: item.Llave
-                }
-            }));
+        await qdrantClient.upsert(COLLECTION_PRODUCTOS_NAME, {
+            wait: true,
+            points: points
+        });
 
-            await qdrantClient.upsert(COLLECTION_CLIENTES_NAME, {
-                wait: true,
-                points: points
-            });
-        }
-        console.log(`Lote de ${data.length} ${tipo} insertado en Qdrant`);
-
+        console.log(`Lote de ${productos.length} productos insertado en Qdrant`);
     } catch (error) {
         console.error('Error insertando lote en Qdrant:', error);
         throw error;
@@ -444,7 +316,7 @@ async function insertarLoteEnQdrant(data, offset = 0, tipo = 'productos') {
 // Función opcional para insertar productos en Qdrant (mantenida para compatibilidad)
 async function insertProductsToQdrant(productos) {
     // Usar la función de procesamiento por lotes
-    return await procesarDatosPorLotes(productos);
+    return await procesarProductosEnLotes(productos);
 }
 
 //endpoint principal
