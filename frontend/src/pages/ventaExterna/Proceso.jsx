@@ -93,7 +93,6 @@ const Proceso = () => {
     
     // Efecto para calcular totales - optimizado para evitar loops
     const calculaYActualizaTotales = useCallback(async () => {
-        alert("sdfsdf")
         if (!isInitialized || !cabezaPedido?.id) return;
         
         try {
