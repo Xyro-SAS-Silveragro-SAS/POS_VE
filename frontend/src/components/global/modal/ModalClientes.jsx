@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { db } from "../../../db/db"
 import { TextCursorInput } from "lucide-react"
-const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteSel = null}) => {
+const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteSel = null, onlyView=false}) => {
     const [busqueda, setBusqueda] = useState('')
     const [clientes, setClientes] = useState([])
 
@@ -86,9 +86,11 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                                             <small className="w-full">Saldo: ${item.Saldo}</small>
                                         </div>
                                         <div className="col-span-2 flex items-center justify-center">
-                                            <svg onClick={()=>{handleSetCliente(item)}} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer">
-                                                <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
-                                            </svg>
+                                            {onlyView === false && (
+                                                <svg onClick={()=>{handleSetCliente(item)}} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer">
+                                                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
+                                                </svg>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

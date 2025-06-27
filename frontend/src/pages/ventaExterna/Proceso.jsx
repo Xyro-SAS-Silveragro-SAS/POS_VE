@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router"
 import TopBarProceso from "../../components/global/TopBarProceso"
-import { useState, useEffect } from "react"
+import { useState, useEffect,useCallback  } from "react"
 import ModalClientes from "../../components/global/modal/ModalClientes"
 import ModalProductos from "../../components/global/modal/ModalProductos"
 import ModalIA from "../../components/global/modal/ModalAI"
@@ -10,7 +10,7 @@ import Funciones from "../../helpers/Funciones"
 import { useTourContext } from '../../context/TourContext';
 import { db } from "../../db/db"
 import { v4 as uuidv4 } from 'uuid';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import ModalDetallesEntrega from "../../components/global/modal/ModalDetallesEntrega"
 
 
@@ -26,7 +26,7 @@ const Proceso = () => {
     const [showIA, setShowIA]                                       = useState(false);
     const [clienteSel, setClienteSel]                               = useState({})   
     const [cabezaPedido, setCabezaPedido]                           = useState({})
-    const [listaCarrito, setListaCarrito]                           = useState({})
+    const [listaCarrito, setListaCarrito]                           = useState([]) // Inicializar como array vacío
     const [totalSolicitadas, setTotalSolicitadas]                   = useState(0)
     const [totalBonificadas, setTotalBonificadas]                   = useState(0)
     // Nuevo estado para controlar el colapso del panel de totales
@@ -35,6 +35,7 @@ const Proceso = () => {
     const [bodHeader, setBodHeader]                                 = useState(localStorage.getItem('bodega') || '0');
     const [showDetallesEntrega, setShowDetallesEntrega]             = useState(false);
     const [destinos, setDestinos]                                    = useState([]);
+    const [isInitialized, setIsInitialized]                         = useState(false); // Nuevo estado para controlar la inicialización
 
     const agregadoCarrito                                           = () => toast("✅ Agregado al carrito!");
 
@@ -49,51 +50,69 @@ const Proceso = () => {
     useEffect(() => {
         if(!isLoading){
             if(!isAuthenticated){
-            navigate('/login')
+                navigate('/login')
+            }
         }
-    }
-    },[isAuthenticated])
+    },[isAuthenticated, isLoading, navigate])
 
-
+    // Efecto principal de inicialización - solo se ejecuta una vez
     useEffect(() => {
-        initializeProcess();
-    }, [tipoProceso, idProceso]); // Agregar dependencias correctas
+        if (!isInitialized) {
+            initializeProcess();
+        }
+    }, [tipoProceso, idProceso, isInitialized]);
 
+    // Efecto para actualizar cabeza cuando cambia el cliente - con validaciones
     useEffect(() => {
-        // Actualizar cabeza cuando cambie el cliente seleccionado
-        if (clienteSel && Object.keys(clienteSel).length > 0 && idPedidoActual) {
+        if (clienteSel && 
+            Object.keys(clienteSel).length > 0 && 
+            idPedidoActual && 
+            isInitialized &&
+            cabezaPedido?.id) {
             updateCabezaConCliente();
         }
-    }, [clienteSel, idPedidoActual]);
+    }, [clienteSel, idPedidoActual, isInitialized]);
     
+    // Efecto separado para cargar items cuando existe cabeza
     useEffect(() => {
-        const initializeData = async () => {
-        // Check if cabezaPedido exists and has a tx_cod_sn
-        if (cabezaPedido && cabezaPedido.tx_cod_sn) {
-            await getListaItems();
-            await getDestinos(); // Call getDestinos right after getting cabezaPedido
-        }
-    };
+        const loadItemsAndDestinos = async () => {
+            if (cabezaPedido?.id && isInitialized) {
+                try {
+                    await getListaItems();
+                    if (cabezaPedido.tx_cod_sn) {
+                        await getDestinos();
+                    }
+                } catch (error) {
+                    console.error('Error loading items and destinos:', error);
+                }
+            }
+        };
 
-    initializeData();
-    }, [cabezaPedido]);
+        loadItemsAndDestinos();
+    }, [cabezaPedido?.id, cabezaPedido?.tx_cod_sn, isInitialized]);
     
-    useEffect(() => {
-        const actualiza = async () => {
-            // Actualizar cabeza cuando cambie el cliente seleccionado
-            if (cabezaPedido && Object.keys(cabezaPedido).length > 0 && idPedidoActual) {
-                calculaCantidades()
-            }
-            
-            if (listaCarrito && Object.keys(listaCarrito).length > 0) {
-                await capturaTotales()
-            }
+    // Efecto para calcular totales - optimizado para evitar loops
+    const calculaYActualizaTotales = useCallback(async () => {
+        alert("sdfsdf")
+        if (!isInitialized || !cabezaPedido?.id) return;
+        
+        try {
+            calculaCantidades();
+            await capturaTotales();
+        } catch (error) {
+            console.error('Error calculating totals:', error);
         }
-        actualiza()
-    }, [listaCarrito]);
+    }, [listaCarrito, cabezaPedido?.id, isInitialized]);
 
+    useEffect(() => {
+        if (listaCarrito.length >= 0 && isInitialized) {
+            calculaYActualizaTotales();
+        }
+    }, [listaCarrito, calculaYActualizaTotales]);
 
     async function initializeProcess() {
+        if (isInitialized) return; // Prevenir múltiples inicializaciones
+        
         setCargando(true);
         
         try {
@@ -150,7 +169,7 @@ const Proceso = () => {
                 // Pongo el id del pedido en localStorage
                 localStorage.setItem('idPedidoActual', idProceso);
                 localStorage.setItem('tipoProceso', tipoProceso);
-                setPedidoActual(idProceso);
+                setPedidoActual(parseInt(idProceso));
                 
                 // Consulto la data del pedido actual para persistir
                 const infoCabeza = await db.cabeza.get(parseInt(idProceso));
@@ -159,27 +178,31 @@ const Proceso = () => {
                     setCabezaPedido(infoCabeza);
                 } else {
                     console.error('No se encontró la cabeza del pedido con ID:', idProceso);
+                    // Manejar el caso donde no se encuentra la cabeza
+                    navigate('/home');
+                    return;
                 }
-                await getListaItems();
-                calculaCantidades();
-                await capturaTotales();
             }
         } catch (error) {
             console.error('Error al inicializar el proceso:', error);
+            toast.error('Error al cargar el proceso');
         } finally {
             setCargando(false);
+            setIsInitialized(true); // Marcar como inicializado
         }
     }
 
     const updateCabezaConCliente = async () => {
         try {
+            if (!cabezaPedido?.id || !clienteSel) return;
+            
             const cabezaActualizada = {
                 ...cabezaPedido,
                 tx_cod_sn: clienteSel.Codigo || '',
                 tx_nom_sn_nombre: clienteSel.Nombre || '',
                 tx_dir_cli_pos: clienteSel.Direccion || '',
                 tx_tel_cli_pos: clienteSel.Telefono || '',
-                CondicionPago:clienteSel.CondicionPago
+                CondicionPago: clienteSel.CondicionPago || ''
             };
             
             await db.cabeza.update(parseInt(idPedidoActual), cabezaActualizada);
@@ -188,8 +211,6 @@ const Proceso = () => {
             console.error('Error al actualizar cabeza con cliente:', error);
         }
     };
-
-
 
     const toggleClientes = () => {
         setShowClientes(!showClientes);
@@ -212,7 +233,6 @@ const Proceso = () => {
         navigate(`/home`);
     }
 
-
     // Función para obtener el título
     const getTitulo = () => {
         if (cargando) return 'Cargando...';
@@ -228,14 +248,26 @@ const Proceso = () => {
         }
     };
 
-    //funcion que agrega al acarrito las lineas
-    const handleAddToCar = async (item)=>{
+    //funcion que agrega al carrito las lineas
+    const handleAddToCar = async (item) => {
+        if(!cabezaPedido?.id) {
+            toast.error('Error: No hay pedido activo');
+            return;
+        }
+
         if(parseInt(item.CantSolicitada) === 0 && parseInt(item.CantBonificada) === 0){
             Funciones.alerta("Atención","Debe seleccionar una cantidad para agregar al carrito, ya sea cantidad normal o bonificada","info",()=>{})
+            return;
         }
-        else{
+
+        try {
             //busco si ya ese producto esta en el carrito
-            const existe = await db.lineas.where('in_id_cabeza').equals(cabezaPedido.id).and(linea => linea.ItemCode === item.ItemCode).first();
+            const existe = await db.lineas
+                .where('in_id_cabeza')
+                .equals(cabezaPedido.id)
+                .and(linea => linea.ItemCode === item.ItemCode)
+                .first();
+                
             if(existe){
                 //actualizo las cantidades nada mas
                 const dataUpdate = { 
@@ -244,49 +276,68 @@ const Proceso = () => {
                 };
                 //actualizo las cantidades en la base de datos
                 await db.lineas.update(parseInt(existe.id), dataUpdate);
-                await getListaItems()
             }
             else{
                 const dataGuardarLinea = {
-                    in_id_cabeza:cabezaPedido.id,
-                    ItemCode:item.ItemCode,
-                    Articulo:item.Articulo,
-                    Precio:item.Precio,
-                    CantSolicitada:item.CantSolicitada,
-                    CantBonificada:item.CantBonificada,
-                    Cantidad:item.Cantidad,
-                    CodigoBarras:item.CodigoBarras,
-                    in_dto_pos:0,
-                    Impuesto:item.Impuesto,
-                    PorcImpto:item.PorcImpto,
-                    ListaPrecio:item.ListaPrecio,
-                    Comprometido:item.Comprometido,
-                    in_estado_lin_pos:0,
+                    in_id_cabeza: cabezaPedido.id,
+                    ItemCode: item.ItemCode,
+                    Articulo: item.Articulo,
+                    Precio: item.Precio,
+                    CantSolicitada: item.CantSolicitada,
+                    CantBonificada: item.CantBonificada,
+                    Cantidad: item.Cantidad,
+                    CodigoBarras: item.CodigoBarras,
+                    in_dto_pos: 0,
+                    Impuesto: item.Impuesto,
+                    PorcImpto: item.PorcImpto,
+                    ListaPrecio: item.ListaPrecio,
+                    Comprometido: item.Comprometido,
+                    in_estado_lin_pos: 0,
                     dt_fecha_reg: new Date(),
-                    tx_usua_reg:currentUser ? currentUser.id_usuario : '',
-                    CodAlmacen:item.CodAlmacen,
-                    sync:0,
+                    tx_usua_reg: currentUser ? currentUser.id_usuario : '',
+                    CodAlmacen: item.CodAlmacen,
+                    sync: 0,
                 }
                 await db.lineas.add(dataGuardarLinea);
-                await getListaItems()
             }
 
+            // Recargar la lista después de agregar
+            await getListaItems();
+            calculaYActualizaTotales()
+            agregadoCarrito();
             
-            agregadoCarrito()
-
-             setTimeout(async () => {
-                calculaCantidades();
-                await capturaTotales();
-            }, 100);
+        } catch (error) {
+            console.error('Error al agregar al carrito:', error);
+            toast.error('Error al agregar producto al carrito');
         }
-
     }
 
     const getListaItems = async () => {
-        const lista = await db.lineas.where('in_id_cabeza').equals(cabezaPedido.id).toArray()
-        setListaCarrito(lista)
+        try {
+            if (!cabezaPedido?.id) {
+                setListaCarrito([]);
+                return;
+            }
+            
+            const lista = await db.lineas
+                .where('in_id_cabeza')
+                .equals(cabezaPedido.id)
+                .toArray();
+                
+            setListaCarrito(lista || []);
+        } catch (error) {
+            console.error('Error al obtener lista de items:', error);
+            setListaCarrito([]);
+        }
     }
+
     const calculaCantidades = () => {
+        if (!Array.isArray(listaCarrito)) {
+            setTotalSolicitadas(0);
+            setTotalBonificadas(0);
+            return;
+        }
+
         let totalCantidad = 0;
         let totalCantidadBonificada = 0;
 
@@ -294,12 +345,16 @@ const Proceso = () => {
             totalCantidad += parseInt(item.CantSolicitada) || 0;
             totalCantidadBonificada += parseInt(item.CantBonificada) || 0;
         });
-        setTotalSolicitadas(totalCantidad)
-        setTotalBonificadas(totalCantidadBonificada)
+        
+        setTotalSolicitadas(totalCantidad);
+        setTotalBonificadas(totalCantidadBonificada);
     }
 
     const capturaTotales = async () => {
-            if (!listaCarrito || listaCarrito.length === 0) {
+        try {
+            if (!cabezaPedido?.id) return;
+
+            if (!Array.isArray(listaCarrito) || listaCarrito.length === 0) {
                 // Si no hay productos, resetear totales
                 const dataUpdate = {
                     in_vlr_total: 0,
@@ -321,7 +376,7 @@ const Proceso = () => {
             // Iterar sobre cada producto en el carrito
             for (let item of listaCarrito) {
                 let descAplicar = 0;
-                let subtotalItem = item.Precio * item.CantSolicitada;
+                let subtotalItem = (parseFloat(item.Precio) || 0) * (parseInt(item.CantSolicitada) || 0);
                 let descto = 0;
                 
                 if (descAplicar > 0) {
@@ -331,13 +386,13 @@ const Proceso = () => {
                 
                 // Calcular impuestos para productos bonificados
                 impuestosBon = 0;
-                if (item.CantBonificada > 0) {
-                    impuestosBon = ((parseFloat(item.PorcImpto) / 100) * (item.Precio * item.CantBonificada));
+                if ((parseInt(item.CantBonificada) || 0) > 0) {
+                    impuestosBon = ((parseFloat(item.PorcImpto) || 0) / 100) * ((parseFloat(item.Precio) || 0) * (parseInt(item.CantBonificada) || 0));
                 }
                 
                 // Acumular totales
                 totalNoImp += subtotalItem;
-                impuestos += ((parseFloat(item.PorcImpto) / 100) * (parseFloat(subtotalItem) - parseFloat(descto)));
+                impuestos += ((parseFloat(item.PorcImpto) || 0) / 100) * (parseFloat(subtotalItem) - parseFloat(descto));
                 impuestos += impuestosBon;
             }
             
@@ -354,12 +409,16 @@ const Proceso = () => {
             // Actualizar el estado local inmediatamente
             setCabezaPedido(prev => ({ ...prev, ...dataUpdate }));
 
+        } catch (error) {
+            console.error('Error al capturar totales:', error);
+        }
     }
-
 
     // Agregar función para manejar el guardado
     const handleSaveDetalles = async (detalles) => {
         try {
+            if (!cabezaPedido?.id) return;
+            
             const dataUpdate = {
                 ...cabezaPedido,
                 fecha_entrega: detalles.fechaEntrega,
@@ -387,8 +446,11 @@ const Proceso = () => {
         }
     };
 
-    const abreModalDetallesEntrega = (valor) => {clienteSel.length
-        if(clienteSel.length === undefined && listaCarrito.length === 0){
+    const abreModalDetallesEntrega = (valor) => {
+        // Verificar si clienteSel tiene propiedades (es un objeto con datos)
+        const clienteSeleccionado = clienteSel && Object.keys(clienteSel).length > 0;
+        
+        if(!clienteSeleccionado && listaCarrito.length === 0){
             Funciones.alerta("Atención","Debe seleccionar un cliente y agregar productos al carrito antes de continuar","info",()=>{})
         }
         else{
@@ -398,18 +460,33 @@ const Proceso = () => {
 
     const getDestinos = async () => {
         try {
-            if (!cabezaPedido?.tx_cod_sn) return;
+            if (!cabezaPedido?.tx_cod_sn) {
+                setDestinos([]);
+                return;
+            }
             
             const destinosClientes = await db.destinos
                 .where('SN')
                 .equals(cabezaPedido.tx_cod_sn)
                 .toArray();
                 
-            setDestinos(destinosClientes);
+            setDestinos(destinosClientes || []);
         } catch (error) {
             console.error('Error fetching destinos:', error);
             setDestinos([]);
         }
+    }
+
+    // Mostrar loading mientras se inicializa
+    if (cargando || !isInitialized) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-2xl mb-4">Cargando...</div>
+                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -442,8 +519,8 @@ const Proceso = () => {
                                 Solicitadas: {totalSolicitadas} | Bonificadas: {totalBonificadas}
                             </small>
                             {/* <span className="bg-red-700 p-2 rounded-full text-white w-[30px] h-[30px] flex items-center justify-center ml-2">{listaCarrito.length}</span> */}
-                        </h2>
-
+                        </h2> 
+                        {/* boton de ver el modal de productos */}
                         {cabezaPedido && cabezaPedido.sync === 0 && (
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"  className=" col-span-1 size-8 cursor-pointer agregaProductos" onClick={toggleProductos}>
                                 <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
@@ -458,7 +535,7 @@ const Proceso = () => {
 
                         {listaCarrito && listaCarrito.length > 0 ? (
                             listaCarrito.map((item, index) => (
-                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync}/>
+                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync} calculaYActualizaTotales={calculaYActualizaTotales}/>
                         ))
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">
@@ -501,11 +578,66 @@ const Proceso = () => {
                     </div>
 
                     {/* Detalles colapsables */}
-                    <div className={`overflow-hidden transition-all duration-75 ${showDetails ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className={`overflow-hidden transition-all duration-75 ${showDetails ? 'max-h-auto opacity-100' : 'max-h-0 opacity-0'}`}>
                         <div className="space-y-3 mb-4">
+
+
+                            {/* muestro los detalles solo cuando ya este sincronizado */}
+                             {cabezaPedido && cabezaPedido.sync === 1 && (
+                                <>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                        <span className="font-bold">FECHA DOC:</span>
+                                        <span className="font-normal uppercase">
+                                            {cabezaPedido.dt_fecha_reg.toISOString().split('T')[0]}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                        <span className="font-bold">FECHA ENTREGA:</span>
+                                        <span className="font-normal uppercase">
+                                            {cabezaPedido.fechaEntrega}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                        <span className="font-bold">ESTADO:</span>
+                                        <span className="font-normal uppercase">
+                                            {cabezaPedido.sync === 1? 'Sincronizado' : 'No sincronizado'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                        <span className="font-bold">TIPO ENVIO:</span>
+                                        <span className="font-normal uppercase">
+                                            {cabezaPedido.tipoEnvio !== "" ? cabezaPedido.tipoEnvio : 'Desconocido'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="grid py-2 border-b border-gray-700">
+                                        <div className="font-bold">DESTINO:</div>
+                                        <div>
+                                            {cabezaPedido.tx_dir_add_cli_pos !== "" ? cabezaPedido.tx_dir_add_cli_pos : 'Desconocido'} - 
+                                            {cabezaPedido.tx_dir_cli_pos !== "" ? cabezaPedido.tx_dir_cli_pos : 'Desconocido'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid py-2 border-b border-gray-700">
+                                        <div className="font-bold">ASESOR COMERCIAL:</div>
+                                        <div>
+                                            {cabezaPedido.tx_nom_emp !== "" ? cabezaPedido.tx_nom_emp : 'Desconocido'}
+                                        </div>
+                                    </div>
+                                    <div className="grid py-2 border-b border-gray-700">
+                                        <div className="font-bold">COMENTARIOS:</div>
+                                        <div>
+                                            {cabezaPedido.observaciones !== "" ? cabezaPedido.observaciones : 'Desconocido'}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+
+
                             {/* Subtotal */}
                             <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                <span className="font-normal">Subtotal:</span>
+                                <span className="font-bold uppercase">Subtotal:</span>
                                 <span className="font-normal">
                                     ${cabezaPedido.in_subtot_pos ? cabezaPedido.in_subtot_pos.toLocaleString('es-CO') : '0'}
                                 </span>
@@ -513,7 +645,7 @@ const Proceso = () => {
                             
                             {/* Impuestos */}
                             <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                <span className="font-normal">Impuestos (IVA):</span>
+                                <span className="font-bold uppercase">Impuestos (IVA):</span>
                                 <span className="font-normal">
                                     ${cabezaPedido.in_vlr_total_imp ? cabezaPedido.in_vlr_total_imp.toLocaleString('es-CO') : '0'}
                                 </span>
@@ -532,11 +664,11 @@ const Proceso = () => {
             </div>
 
             {/* Modal clientes*/}
-            <ModalClientes showClientes={showClientes} toggleClientes={toggleClientes} setClienteSel={setClienteSel} />
+            <ModalClientes showClientes={showClientes} toggleClientes={toggleClientes} setClienteSel={setClienteSel}  onlyView={false}/>
             {/* fin del modal clientes */}
 
             {/* Modal productos*/}
-            <ModalProductos showProductos={showProductos} toggleProductos={toggleProductos} handleAddToCar={handleAddToCar}/>
+            <ModalProductos showProductos={showProductos} toggleProductos={toggleProductos} handleAddToCar={handleAddToCar}  onlyView={false}/>
             {/* fin del modal productos */}
 
             {/* Modal IA*/}

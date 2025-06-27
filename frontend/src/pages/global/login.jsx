@@ -45,6 +45,7 @@ const Login = () => {
             getAlmacenesNube();
         }
         else{
+            setCargando(false)
             //leo los almacenes de la base de datos local
             db.almacenes.toArray().then((almacenes) => {
                 setAlmacenes(almacenes)

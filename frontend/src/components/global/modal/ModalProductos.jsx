@@ -1,12 +1,10 @@
 
-import Cantidades from '../../ventaExterna/Cantidades'
 import { useState } from 'react'
 import { db } from '../../../db/db'
-import { PackageSearch, ShoppingCart } from "lucide-react"
-import Funciones from '../../../helpers/Funciones'
+import { PackageSearch } from "lucide-react"
 import CardProducto from '../../ventaExterna/CardProducto'
 
-const ModalProductos = ({showProductos = false, toggleProductos = null, handleAddToCar=null}) => {
+const ModalProductos = ({showProductos = false, toggleProductos = null, handleAddToCar=null, onlyView=false}) => {
     const [busqueda, setBusqueda]               = useState('')
     const [productos, setProductos]             = useState('')
 
@@ -33,26 +31,6 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
         consultaProductos()
     }
 
-    
-
-    const handleCambiaCantidad = (itemModificado, nuevaCantidad, tipo) => {
-        setProductos(prevProductos =>
-            prevProductos.map(producto => {
-                if (producto.id === itemModificado.id) { // Asume que 'id' es un identificador único
-                    if (tipo === 'normal') {
-                        return { ...producto, CantSolicitada: nuevaCantidad };
-                    } else if (tipo === 'bonificado') {
-                        return { ...producto, CantBonificada: nuevaCantidad }; // Asume que existe CantBonificada
-                    }
-                }
-                return producto;
-            })
-        );
-    };
-
-
-    
-
     return (
         <>
             <div className={`fixed top-0 left-0 w-full h-dvh bg-white z-50 transform transition-transform duration-200 ease-out ${showProductos ? 'translate-y-0' : 'translate-y-full'}`}>
@@ -76,9 +54,9 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
                         </div>
                     </div>
         
-                    <div className="w-full lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-auto mt-[90px]">
+                    <div className="w-full p-2 lg:w-[54%] md:p-10 m-auto text-gray-700 relative h-auto mt-[90px]">
                         {productos && productos.length > 0 && productos.map((item, index) => (
-                            <CardProducto item={item} key={index} handleAddToCar={handleAddToCar} sync={0}/>
+                            <CardProducto item={item} key={index} handleAddToCar={handleAddToCar} sync={0} onlyView={onlyView} />
                         ))}
 
 

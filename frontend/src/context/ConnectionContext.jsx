@@ -17,24 +17,7 @@ export const ConnectionProvider = ({ children }) => {
 
   // Función para verificar la conexión manualmente
   const checkConnection = async () => {
-    try {
-      // Intentamos hacer una petición a un servicio externo
-      // Usamos un timestamp para evitar caché
-      const response = await fetch('https://www.google.com/generate_204?t=' + new Date().getTime(), {
-        method: 'HEAD',
-        mode: 'no-cors',
-        cache: 'no-store'
-      });
-      
-      const online = true; // Si llegamos aquí, estamos online
-      setIsOnline(online);
-      setLastOnlineCheck(new Date());
-      return online;
-    } catch (error) {
-      setIsOnline(false);
-      setLastOnlineCheck(new Date());
-      return false;
-    }
+    setIsOnline(navigator.onLine)
   };
 
   // Escuchar eventos de conexión del navegador

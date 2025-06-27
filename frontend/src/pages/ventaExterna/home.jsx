@@ -7,6 +7,9 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../db/db";
 import { useTourContext } from '../../context/TourContext';
+import ButtonNew from "../../components/ventaExterna/ButtonNew";
+import ModalClientes from "../../components/global/modal/ModalClientes";
+import ModalProductos from "../../components/global/modal/ModalProductos";
 
 const Home = () => {
   const [titulo, setTitulo]                                             = useState('')
@@ -19,6 +22,8 @@ const Home = () => {
   const [listaProcesos, setListaProcesos]                               = useState(null)
   const [procesosFiltrados, setProcesosFiltrados]                       = useState(null)
   const [mostrarModalUsuario, setMostrarModalUsuario]                   = useState(false)
+  const [showClientes, setShowClientes]                                 = useState(false);
+  const [showProductos, setShowProductos]                               = useState(false);
   const { 
     startTour
   } = useTourContext();
@@ -172,6 +177,15 @@ const Home = () => {
     return nombres[filtro] || filtro.charAt(0).toUpperCase() + filtro.slice(1)
   }
 
+
+  const toggleClientes = () => {
+      setShowClientes(!showClientes);
+  }; 
+  
+  const toggleProductos= () => {
+      setShowProductos(!showProductos);
+  };
+
   return (
     <>
         <TopBar startTour={startTour} onUserClick={toggleModalUsuario} />
@@ -263,12 +277,9 @@ const Home = () => {
           )}
               
           </div>
+          
           {/* boton de agregar nuevo proceso */}
-          <button onClick={() => nuevoProceso('')} className="fixed bottom-20 p-4 cursor-pointer rounded-full right-5 z-10 bg-red-600  shadow-lg/30 botonAgregaNueva">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-10">
-              <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-            </svg>
-          </button>
+          <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} />
 
         </div>
         
@@ -343,7 +354,13 @@ const Home = () => {
           </div>
         )}
         
-        
+        {/* Modal clientes*/}
+        <ModalClientes showClientes={showClientes} toggleClientes={toggleClientes} setClienteSel={() => {}}  onlyView={true}/>
+        {/* fin del modal clientes */}
+
+        {/* Modal productos*/}
+        <ModalProductos showProductos={showProductos} toggleProductos={toggleProductos} handleAddToCar={() => {}} onlyView={true}/> 
+
 
       <Footer handleChangeType={handleChangeType} botonActivo={botonActivo}/>
     </>
