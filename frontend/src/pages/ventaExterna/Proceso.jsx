@@ -94,7 +94,6 @@ const Proceso = () => {
     // Efecto para calcular totales - optimizado para evitar loops
     const calculaYActualizaTotales = useCallback(async () => {
         if (!isInitialized || !cabezaPedido?.id) return;
-        
         try {
             calculaCantidades();
             await capturaTotales();
@@ -311,6 +310,11 @@ const Proceso = () => {
         }
     }
 
+    const refrescaCatidades = async () => {
+        await getListaItems();
+        calculaYActualizaTotales()
+    }
+
     const getListaItems = async () => {
         try {
             if (!cabezaPedido?.id) {
@@ -352,7 +356,7 @@ const Proceso = () => {
     const capturaTotales = async () => {
         try {
             if (!cabezaPedido?.id) return;
-
+            
             if (!Array.isArray(listaCarrito) || listaCarrito.length === 0) {
                 // Si no hay productos, resetear totales
                 const dataUpdate = {
@@ -365,6 +369,7 @@ const Proceso = () => {
                 setCabezaPedido(prev => ({ ...prev, ...dataUpdate }));
                 return;
             }
+
 
             let descuento = 0;
             let impuestosBon = 0;
@@ -402,7 +407,6 @@ const Proceso = () => {
                 in_subtot_pos: totalNoImp,
                 in_vlr_total_imp: impuestos
             };
-            
             await db.cabeza.update(cabezaPedido.id, dataUpdate);
             
             // Actualizar el estado local inmediatamente
@@ -534,7 +538,7 @@ const Proceso = () => {
 
                         {listaCarrito && listaCarrito.length > 0 ? (
                             listaCarrito.map((item, index) => (
-                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync} calculaYActualizaTotales={calculaYActualizaTotales}/>
+                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync} calculaYActualizaTotales={refrescaCatidades}/>
                         ))
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">

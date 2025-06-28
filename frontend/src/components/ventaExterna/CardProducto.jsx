@@ -34,7 +34,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                 .equals(item.id)
                                 .modify({ Precio: valorCaja })
                                 .then(() => {
-                                    initializeProcess()
+                                    calculaYActualizaTotales()
                                 })
                                 .catch((error) => {
                                     console.error('Error al actualizar la cantidad en la línea:', error);
@@ -110,7 +110,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                 .equals(item.id)
                 .delete()
                 .then(() => {
-                    calculaYActualizaTotales()
+                    initializeProcess()
                 })
                 .catch((error) => {
                     console.error('Error al eliminar el producto de la línea:', error);
