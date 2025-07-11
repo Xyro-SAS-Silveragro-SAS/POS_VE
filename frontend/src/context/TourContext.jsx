@@ -8,7 +8,7 @@ const tourSteps = {
   home: [
     {
         selector: '.help',
-        content: 'Hola, Soy ANA, la asistente virtual de Silveragro. Bienvenido a la aplicación de venta externa. Te daré un tour para que aprendas a conocerla mejor.',
+        content: 'Hola, Soy Dora, la asistente virtual de Silveragro. Bienvenido a la aplicación de venta externa. Te daré un tour para que aprendas a conocerla mejor.',
     },
     {
       selector: '.filtrosActual',
@@ -47,7 +47,7 @@ const tourSteps = {
     },
     {
       selector: '.asistenteAna',
-      content: 'Acá podrás realizar el pedido completamente por voz usando la asistente ANA',
+      content: 'Acá podrás realizar el pedido completamente por voz usando la asistente DORA',
     },
     {
       selector: '.sincronizarBtn',

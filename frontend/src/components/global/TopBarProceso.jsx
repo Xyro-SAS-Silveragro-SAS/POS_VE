@@ -54,7 +54,7 @@ const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProce
 
     const iniciaAna = () =>{
         //toggleIA();
-        Funciones.alerta('Oops...','ANA no esta disponible en este momento. Disculpa las molestias', 'info', () => {})
+        Funciones.alerta('Oops...','DORA no esta disponible en este momento. Disculpa las molestias', 'info', () => {})
     }
 
     return (

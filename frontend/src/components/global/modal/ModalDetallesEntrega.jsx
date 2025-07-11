@@ -74,21 +74,29 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                         lineas: lineas
                     }
                 }
-
                 //valido si estamos online para enviar a sincronizar
                 if(isOnline){
                     const items = await api.post('api/ventaExterna/capturarPedido',dataSincroniza)
-                    if(items.continuar === 1 || items.continuar === 3){
+                    /*
+                        Estado 1: Sincronizado SAP
+                        Estado 2: Error en sincronización a SAP
+                        Estado 3: Pedido existente 
+                        Estado 4: Bloqueado por cartera. Monto exedido
+                        Estado 5: Bloqueado por cartera. Facturas vencidas
+                        Estado 6: Pedido anulado
+                    */
+                   
+                    if(items.continuar === 1){
                         Funciones.alerta('Éxito!', items.mensaje, 'success', async() => {
                             //actualizo el estado de sincronización
-                            await db.cabeza.update(parseInt(idProceso), { sync: 1 });
+                            await db.cabeza.update(parseInt(idProceso), { sync: 1, DocEntry: items.DocEntry, DocNum:items.DocNum,in_estado:items.in_estado,tx_comentarios:items.tx_comentarios });
                             handleRefresh()
                         });
                     }
                     else{
                          Funciones.alerta('Atención!', `${items.mensaje} `, 'info', async() => {
                             //actualizo el estado de sincronización
-                            await db.cabeza.update(parseInt(idProceso), { sync: 0 });
+                            await db.cabeza.update(parseInt(idProceso), { sync: 0, DocEntry: items.DocEntry, DocNum:items.DocNum,in_estado:items.in_estado,tx_comentarios:items.tx_comentarios });
                             handleRefresh()
                         });
                     }

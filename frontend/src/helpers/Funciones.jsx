@@ -83,6 +83,18 @@ const Funciones = {
         })
         .then((resultado) => {
           if(resultado.value){
+
+            Swal.fire({
+                title: 'Un momento por favor...',
+                text: 'Procesando su solicitud',
+                icon: 'info',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             return callback();
           }
           else{

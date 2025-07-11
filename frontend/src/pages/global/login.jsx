@@ -80,11 +80,11 @@ const Login = () => {
             setCargando(false)
         }
     }
-    const getClientes = async () => {
+    const getClientes = async (cdSap) => {
         try {
           setCargando(true)
           // Consultar la API para obtener los almacenes
-          const clientes = await api.get('api/clientes/vexterna')
+          const clientes = await api.get('api/clientes/vexterna/codigo/'+cdSap)
           if (clientes.datos && clientes.datos.length > 0) {
                 // Almacenar los usuarios en la base de datos local
                 // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
@@ -180,7 +180,8 @@ const Login = () => {
                 const indiceAleatorioD = Math.floor(Math.random() * datosInteresantes.length);
                 setDatoAleatorio(datosInteresantes[indiceAleatorioD]);
 
-                await getClientes().catch(err => console.error("Error cargando clientes en segundo plano:", err));
+                //solo los clientes que tengan el cd_sap del usuario
+                await getClientes(result.user.cd_sap).catch(err => console.error("Error cargando clientes en segundo plano:", err));
                 await getItems(dataLogin.bodega).catch(err => console.error("Error cargando items en segundo plano:", err));
                 await getDestinos().catch(err => console.error("Error cargando destinos en segundo plano:", err));
                 //consulto las tablas restantes

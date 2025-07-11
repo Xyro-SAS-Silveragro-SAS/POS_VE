@@ -10,6 +10,8 @@ import { useTourContext } from '../../context/TourContext';
 import ButtonNew from "../../components/ventaExterna/ButtonNew";
 import ModalClientes from "../../components/global/modal/ModalClientes";
 import ModalProductos from "../../components/global/modal/ModalProductos";
+import Funciones from "../../helpers/Funciones";
+import api from "../../services/apiService";
 
 const Home = () => {
   const [titulo, setTitulo]                                             = useState('')
@@ -66,6 +68,19 @@ const Home = () => {
       getListaProcesos()
     }
   },[botonActivo, currentUser])
+
+
+  const actualizaProcesos = async () => {
+    const lista = await db.cabeza.where('in_tipo')
+                                   .equals(botonActivo.toLowerCase())
+                                   .reverse() 
+                                   .sortBy('dt_fecha_reg')
+                                   
+      const dataLista = lista.map((item) => {
+        return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
+      }).filter(item => item !== null)                           
+      setListaProcesos(dataLista)
+  } 
 
   // Efecto para aplicar el filtro cuando cambian los procesos o el filtro seleccionado
   useEffect(() => {
@@ -186,6 +201,39 @@ const Home = () => {
       setShowProductos(!showProductos);
   };
 
+
+  const getEstadoBadge = (estado, mensajeServidor) => {
+    switch (estado) {
+      case 1:
+        return <small onClick={()=>{Funciones.alerta("Pedido existoso","Pedido generado y sincronizado en SAP","success")}} className="flex items-center bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">SINCRONIZADO A SAP <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      case 2:
+        return <small onClick={()=>{Funciones.alerta("Problema de sincronización","+Se ha presentado un problema al sincronizar a SAP. Mensaje error: "+mensajeServidor,"info")}} className="flex items-center bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR DE SINCRONIZACION <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      case 3:
+        return <small onClick={()=>{Funciones.alerta("Pedido existente","El UUID del pedido ya existe en la base de datos","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      case 4:
+        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera","El monto del pedido supera el crédito del usuario","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      case 5:
+        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera","El cliente tiene facturas vencidas","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      case 6:
+        return <small onClick={()=>{Funciones.alerta("Pedido anulado","Cartera no ha aprobado este pedido. Mensaje cartera: "+mensajeServidor,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">NO APROBADO<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+      default:
+        return <small  className="bg-gray-300 text-black py-[2px] px-4 font-bold rounded-lg">BORRADOR</small>;
+    }
+  };
+
+  const verificaEstado = async (id_consec, idProceso) => { 
+
+    const pedido = await api.get('api/pedidos/uuid/'+id_consec)
+    console.log(pedido)
+    if (pedido) {
+       Funciones.alerta("Estado del pedido",pedido.mensaje,"info",async ()=>{
+         await db.cabeza.update(parseInt(idProceso), { sync: 1, DocEntry: pedido.doc_entry, DocNum:pedido.doc_num,in_estado:pedido.in_estado,tx_comentarios:pedido.tx_comentarios });
+         actualizaProcesos()
+       });
+    }
+}
+
+
   return (
     <>
         <TopBar startTour={startTour} onUserClick={toggleModalUsuario} />
@@ -226,7 +274,7 @@ const Home = () => {
           {procesosFiltrados && procesosFiltrados.length > 0 ? (
             // Renderizar procesos filtrados
             procesosFiltrados.map((pedido, index) => (
-              <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer "  onClick={() => nuevoProceso(pedido.id)}>
+              <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer " >
                   <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center ">
                   {pedido.sync === 1 ? (
                       // chulo
@@ -241,17 +289,34 @@ const Home = () => {
                   <div className="col-span-9 lg:col-span-10 relative">
                     <strong>Codigo {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec.toUpperCase() ? String(pedido.id_consec.toUpperCase()).slice(-5) : ''}<br/>
                     <strong>Cliente: </strong> {pedido.tx_nom_sn_nombre !== '' ? pedido.tx_nom_sn_nombre : 'Sin Cliente'}<br/>
+
+                    { pedido && pedido.in_tipo === 'pedidos' && (
+                      <>
+                        <strong>Codigo SAP: </strong> { pedido.DocNum !== '' ? pedido.DocNum : 'Sin Código' }<br/>
+                      </>
+                    )}
+
                     <strong>Fecha: </strong> { pedido.dt_fecha_reg ? new Date(pedido.dt_fecha_reg).toLocaleDateString() : 'N/A'}<br/>
                     <strong>Valor: </strong> ${ pedido.in_vlr_total ? pedido.in_vlr_total.toLocaleString('es-CO') : 'N/A'}<br/>
                     { pedido && pedido.sync === 0 ? (
-                      <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg">SIN SINCRONIZAR</small>
+                      <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg mr-2">SIN SINCRONIZAR</small>
                     ) : (
-                      <small className=" bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg">SINCRONIZADO</small>
+                      <small className=" bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg mr-2">SINCRONIZADO</small>
                     )}
+                    
+                    <div className="flex items-center gap-2 mt-2">
+                      {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
+                    
+                      {[2, 3, 4, 5].includes(Number(pedido.in_estado)) && (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                          </svg>
+                      )}
+                    </div>
 
                   </div>
                   <div className="col-span-1 flex justify-end items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer"  onClick={() => nuevoProceso(pedido.id)}>
                       <path fillRule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clipRule="evenodd" />
                     </svg>
                   </div>

@@ -59,6 +59,12 @@ const Cantidades = ({titulo = "", tipo='normal',item = null, handleCantidad = nu
         setIsEditing(false);
     };
 
+    const inputStyle = {
+        /* Chrome, Safari, Edge, Opera */
+        WebkitAppearance: 'none',
+        MozAppearance: 'textfield', /* Firefox */
+    };
+
     return (
         <>
             <div className="flex flex-wrap">
@@ -79,6 +85,7 @@ const Cantidades = ({titulo = "", tipo='normal',item = null, handleCantidad = nu
                     </div>
                     <div className="col-span-4 items-center justify-center">
                         <input 
+                            style={inputStyle}
                             type="number" 
                             min="0"
                             value={localValue}

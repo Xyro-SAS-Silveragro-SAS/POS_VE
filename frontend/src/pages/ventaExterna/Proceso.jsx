@@ -139,7 +139,7 @@ const Proceso = () => {
                     in_vlr_total_imp:0,
                     in_estado:0,
                     dt_fecha_reg:new Date(),
-                    tx_usua:currentUser ? currentUser.id_usuario : '',
+                    tx_usua:currentUser ? currentUser.cd_sap : '',
                     tx_comentarios:"",
                     tx_nom_emp:currentUser ? currentUser.tx_empleado_sap : '',
                     in_cod_emp:0,
@@ -600,6 +600,14 @@ const Proceso = () => {
                                             {cabezaPedido.fechaEntrega}
                                         </span>
                                     </div>
+                                    { cabezaPedido && cabezaPedido.in_tipo === 'pedidos' && (
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span className="font-bold">CODIGO SAP:</span>
+                                            <span className="font-normal uppercase">
+                                                {cabezaPedido.DocNum}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between items-center py-2 border-b border-gray-700">
                                         <span className="font-bold">ESTADO:</span>
                                         <span className="font-normal uppercase">
