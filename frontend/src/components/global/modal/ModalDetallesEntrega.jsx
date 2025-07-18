@@ -1,14 +1,13 @@
-import { useState,  } from 'react';
+import { useState, useEffect } from 'react';
 import Funciones from '../../../helpers/Funciones';
 import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
 import { useNavigate } from 'react-router';
-const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh} }) => {
+const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
     
     const { isOnline }            = useConnection()
     
-    const navigate                = useNavigate()
     const [formData, setFormData] = useState({
         fechaEntrega: '',
         tipoEnvio: '',
@@ -16,13 +15,49 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
         destino: ''
     });
 
+
+    useEffect(()=>{
+        setFormData(prev => ({
+            ...prev,
+            fechaEntrega: cabezaPedido.fechaEntrega,
+            tipoEnvio: cabezaPedido.tipoEnvio,
+            observaciones: cabezaPedido.observaciones,
+            destino: `${cabezaPedido.tx_dir_code_cli_pos}|${cabezaPedido.tx_dir_add_cli_pos}|${cabezaPedido.tx_dir_cli_pos}`
+        }))
+        
+    },[cabezaPedido])
+
+    useEffect(()=>{
+        if(isOpen){
+            const guardaCabeza = async () => {
+                const destinoSplit = formData.destino.split('|');
+                const dataGuardar = {
+                    tx_dir_cli_pos:destinoSplit[2],
+                    tx_dir_code_cli_pos: destinoSplit[0],
+                    tx_dir_add_cli_pos: destinoSplit[1],
+                    fechaEntrega: formData.fechaEntrega,
+                    tipoEnvio: formData.tipoEnvio,
+                    observaciones: formData.observaciones,
+                }
+                //actualizo la data de los detalles finales
+                await db.cabeza.update(parseInt(idProceso), dataGuardar);
+            }
+            guardaCabeza()
+        }
+
+    },[formData, idProceso, isOpen])
+
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
+        
     };
+
+   
 
     const handleSendProccess = async () => {
 
@@ -41,7 +76,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
         else{
             const proceso = (tipoProceso === 'pedidos') ? 'pedido' : 'cotización';
             Funciones.confirmacion('Atención!', `¿Está seguro de sincronizar los datos ingresados en el ${proceso}?`, 'info', async () => {
-                const destinoSplit = formData.destino.split('-');
+                const destinoSplit = formData.destino.split('|');
                 //valido campos
                 const dataGuardar = {
                     tx_dir_cli_pos:destinoSplit[2],
@@ -104,7 +139,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                     Funciones.alerta('Atención!', 'No se pudo sincronizar, verifique su conexión a internet', 'error', () => {});
                 }
                 
-            })
+            },()=>{}, 'SINCRONIZAR', 'CANCELAR', true);
         }
     }
 
@@ -142,11 +177,15 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                                 </label>
                                 <input
                                     type="date"
-                                     min={(() => {
+                                    min={(() => {
                                         const tomorrow = new Date();
                                         tomorrow.setDate(tomorrow.getDate() + 1);
-                                        return tomorrow.toISOString().split('T')[0];
-                                    })()}// Establece la fecha mínima como mañana
+                                        // Usar métodos locales para evitar desfase por zona horaria
+                                        const year = tomorrow.getFullYear();
+                                        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                        const day = String(tomorrow.getDate()).padStart(2, '0');
+                                        return `${year}-${month}-${day}`;
+                                    })()}
                                     name="fechaEntrega"
                                     value={formData.fechaEntrega}
                                     onChange={handleChange}
@@ -188,7 +227,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                                     <option value="">Seleccione un destino</option>
 
                                     {destinos && destinos.map((destino, index) => (
-                                        <option key={index} value={` ${destino.id_destinos}-${destino.Address}-${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
+                                        <option key={index} value={`${destino.id_destinos}|${destino.Address}|${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
                                     ))}
 
                                 </select>

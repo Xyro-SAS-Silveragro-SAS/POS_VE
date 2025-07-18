@@ -3,7 +3,7 @@ import Footer from "../../components/global/Footer"
 import Filtro from "../../components/global/Filtro"
 import { useConnection } from "../../context/ConnectionContext";
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../db/db";
 import { useTourContext } from '../../context/TourContext';
@@ -12,6 +12,7 @@ import ModalClientes from "../../components/global/modal/ModalClientes";
 import ModalProductos from "../../components/global/modal/ModalProductos";
 import Funciones from "../../helpers/Funciones";
 import api from "../../services/apiService";
+import { API_MTS } from "../../config/config";
 
 const Home = () => {
   const [titulo, setTitulo]                                             = useState('')
@@ -205,17 +206,17 @@ const Home = () => {
   const getEstadoBadge = (estado, mensajeServidor) => {
     switch (estado) {
       case 1:
-        return <small onClick={()=>{Funciones.alerta("Pedido existoso","Pedido generado y sincronizado en SAP","success")}} className="flex items-center bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">SINCRONIZADO A SAP <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Proceso exitoso",`${(titulo === 'Cotizaciones') ? 'Cotizacion generada' : 'Pedido generado y sincronizado a SAP'}`,"success")}} className="flex items-center bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">{(titulo === 'Cotizaciones') ? " PROCESADA " :" SINCRONIZADO A SAP "} <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       case 2:
-        return <small onClick={()=>{Funciones.alerta("Problema de sincronización","+Se ha presentado un problema al sincronizar a SAP. Mensaje error: "+mensajeServidor,"info")}} className="flex items-center bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR DE SINCRONIZACION <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Problema de sincronización","+Se ha presentado un problema al sincronizar a SAP. Mensaje error: "+mensajeServidor,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR DE SINCRONIZACION <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       case 3:
-        return <small onClick={()=>{Funciones.alerta("Pedido existente","El UUID del pedido ya existe en la base de datos","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Pedido existente",`El UUID del ${titulo} ya existe en la base de datos`,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       case 4:
-        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera","El monto del pedido supera el crédito del usuario","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera",`El monto del ${titulo} supera el crédito del usuario`,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       case 5:
-        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera","El cliente tiene facturas vencidas","info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Bloqueo de cartera","El cliente tiene facturas vencidas. Mensaje: "+mensajeServidor,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">ERROR<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       case 6:
-        return <small onClick={()=>{Funciones.alerta("Pedido anulado","Cartera no ha aprobado este pedido. Mensaje cartera: "+mensajeServidor,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">NO APROBADO<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
+        return <small onClick={()=>{Funciones.alerta("Pedido anulado",`Cartera no ha aprobado este ${titulo}. Mensaje cartera: ${mensajeServidor}`,"info")}} className="flex items-center bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg text-[10px]">NO APROBADO<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2 lucide lucide-square-arrow-out-up-right-icon lucide-square-arrow-out-up-right"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg></small>;
       default:
         return <small  className="bg-gray-300 text-black py-[2px] px-4 font-bold rounded-lg">BORRADOR</small>;
     }
@@ -231,7 +232,18 @@ const Home = () => {
          actualizaProcesos()
        });
     }
-}
+  }
+
+  const handleBorrarPreliminar = (infoPedido) => {
+    Funciones.confirmacion("Atención","Está a punto de borrar el pedido preliminar, esto no se puede revertir. ¿Desea continuar?",'info', async () => {
+      // Borra el registro de la tabla cabeza
+      await db.cabeza.delete(infoPedido.id);
+      // Borra todos los registros de la tabla lineas relacionados
+      await db.lineas.where('in_id_cabeza').equals(infoPedido.id).delete();
+      // Opcional: actualiza la lista de procesos en pantalla
+      actualizaProcesos && actualizaProcesos();
+    })
+  }
 
 
   return (
@@ -274,8 +286,21 @@ const Home = () => {
           {procesosFiltrados && procesosFiltrados.length > 0 ? (
             // Renderizar procesos filtrados
             procesosFiltrados.map((pedido, index) => (
-              <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer " >
-                  <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center ">
+              <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer relative" >
+
+                {pedido && pedido.sync === 0 && (
+                    <div onClick={()=>{handleBorrarPreliminar(pedido)}} className="absolute bottom-4 right-4 flex gap-2 cursor-pointer items-center text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
+                          <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clipRule="evenodd" />
+                        </svg>
+                        Eliminar
+                    </div>
+                )}
+
+                  
+
+
+                  <div className="col-span-2 lg:col-span-1 h-auto flex items-start justify-center relative">
                   {pedido.sync === 1 ? (
                       // chulo
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-cloud-check-icon lucide-cloud-check size-10"><path d="m17 15-5.5 5.5L9 18"/><path d="M5 17.743A7 7 0 1 1 15.71 10h1.79a4.5 4.5 0 0 1 1.5 8.742"/></svg>
@@ -285,6 +310,16 @@ const Home = () => {
                         <path fillRule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clipRule="evenodd" />
                       </svg>
                     )}
+
+                    {pedido && pedido.sync === 1 && pedido.in_tipo ==='cotizaciones' && (
+                          <Link to={`${API_MTS}api/cotizacion/pdf/${pedido.id_consec}`} target="_blank" className="absolute right-[35%] bottom-0 flex">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" className="size-5 ml-4">
+                                  <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 144-208 0c-35.3 0-64 28.7-64 64l0 144-48 0c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128zM176 352l32 0c30.9 0 56 25.1 56 56s-25.1 56-56 56l-16 0 0 32c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-48 0-80c0-8.8 7.2-16 16-16zm32 80c13.3 0 24-10.7 24-24s-10.7-24-24-24l-16 0 0 48 16 0zm96-80l32 0c26.5 0 48 21.5 48 48l0 64c0 26.5-21.5 48-48 48l-32 0c-8.8 0-16-7.2-16-16l0-128c0-8.8 7.2-16 16-16zm32 128c8.8 0 16-7.2 16-16l0-64c0-8.8-7.2-16-16-16l-16 0 0 96 16 0zm80-112c0-8.8 7.2-16 16-16l48 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 32 32 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 48c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-64 0-64z"/>
+                              </svg>
+                             
+
+                          </Link>
+                      )}
                   </div>
                   <div className="col-span-9 lg:col-span-10 relative">
                     <strong>Codigo {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec.toUpperCase() ? String(pedido.id_consec.toUpperCase()).slice(-5) : ''}<br/>
@@ -312,6 +347,8 @@ const Home = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                           </svg>
                       )}
+
+                      
                     </div>
 
                   </div>

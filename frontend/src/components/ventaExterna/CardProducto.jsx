@@ -3,6 +3,9 @@ import Cantidades from "./Cantidades"
 import Funciones from "../../helpers/Funciones"
 import defaultImage  from '../../assets/img/default.png'
 import { db } from "../../db/db"
+import ApiSL from "../../services/apiSL"
+import {Share2} from 'lucide-react'
+import { URL_SITE } from "../../config/config"
 
     
 
@@ -10,6 +13,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     const [producto, setProductos]              = useState('')
     const [showImageModal, setShowImageModal]   = useState(false)
     const [imageUrl, setImageUrl]               = useState('')
+    const [dataTiendas, setDataTiendas]         = useState(null);
+    const [loadingTiendas, setLoadingTiendas]   = useState(false)
+    const [activeTab, setActiveTab]             = useState('info');
 
     useEffect(() => {
         setProductos(item)
@@ -21,6 +27,23 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             setImageUrl(`https://api.xyroposadmin.com/api/imgUnItem/${producto.ItemCode}`)
         }
     }, [producto])
+
+    useEffect(() => {
+    if (showImageModal) {
+        const fetchTiendas = async () => {
+                try {
+                    setLoadingTiendas(true);
+                    const dataTiendas = await ApiSL.get(`/api/inventory/Bodegas/${producto.ItemCode}`);
+                    setDataTiendas(dataTiendas.data.datos);
+                } catch (e) {
+                    console.log("Error:", e);
+                } finally {
+                    setLoadingTiendas(false);
+                }
+            };
+            fetchTiendas();
+        }
+    }, [showImageModal, producto.ItemCode]);
 
     const handleChangePrecio = (item) => {
         Funciones.alertaBox("Ajuste de precio","Escriba el precio si desea cambiarlo","info", (valorCaja)=>{
@@ -117,6 +140,37 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                 });
         })
     }
+
+
+    const shareProduct = async () => {
+        const shareUrl = `${URL_SITE}infoProducto/${localStorage.getItem('bodega')}/${producto.ItemCode}`;
+        const shareData = {
+        title: producto.Articulo,
+        text: `${producto.Articulo}\n\nPrecio: ${Funciones.formatearPrecio(producto.Precio)}\nStock: ${producto.Cantidad} unidades`,
+        url: shareUrl
+        };
+
+        try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+        } else {
+            // Fallback: copiar al portapapeles
+            await navigator.clipboard.writeText(shareUrl);
+            alert('Enlace copiado al portapapeles');
+        }
+        } catch (error) {
+        console.error('Error sharing:', error);
+        // Fallback manual
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Enlace copiado al portapapeles');
+        }
+    };
+
 
     return (
         <>
@@ -216,38 +270,131 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
 
             {/* Modal de Zoom de Imagen */}
             {showImageModal && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closeImageModal}>
-                    <div className="relative max-w-full max-h-full bg-white">
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" >
+                    <div className="relative max-w-full max-h-full bg-white rounded-lg overflow-hidden">
                         {/* Botón de cerrar */}
                         <button 
                             onClick={closeImageModal}
-                            className="absolute -top-4 -right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
+                            className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-700">
                                 <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                             </svg>
+                        </button>
+                        <button className="absolute top-4 left-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10" onClick={shareProduct}>
+                            <Share2 className="w-5 h-5 " />
                         </button>
                         
                         {/* Imagen ampliada */}
                         <img 
                             src={imageUrl} 
                             alt={producto.Articulo || "Producto ampliado"}
-                            className="w-[70%] max-h-full object-contain rounded-t-lg m-auto"
+                            className="w-[70%] max-h-96 object-contain rounded-t-lg m-auto"
                             onError={handleImageError}
-                            onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer clic en la imagen
+                            onClick={(e) => e.stopPropagation()}
                         />
                         
-                        {/* Información del producto en el modal */}
-                        <div className=" bottom-0 left-0 right-0 bg-black text-white p-4 rounded-b-lg">
-                            <h3 className="font-bold text-lg">{producto.Articulo}</h3>
-                            <p className="text-sm opacity-90">Código: {producto.ItemCode}</p>
-                            <p className="text-sm opacity-90">Almacen: {producto.CodAlmacen}</p>
-                            <p className="text-sm opacity-90">Lista precio: {producto.ListaPrecio}</p>
-                            <p className="text-sm opacity-90">Impuesto: {producto.Impuesto} - {producto.PorcImpto}%</p>
-                            <p className="text-sm opacity-90">Codigo de barras: {producto.CodigoBarras}</p>
-                            <p className="text-sm opacity-90">Existencias: {producto.Cantidad}</p>
-                            <p className="text-sm opacity-90">Comprometido: {producto.Comprometido}</p>
-                            <p className="text-sm opacity-90">Precio: ${Funciones.formatearPrecio(producto.Precio)}</p>
+                        {/* Contenedor de las pestañas */}
+                        <div className="bg-white">
+                            {/* Pestañas de navegación */}
+                            <div className="flex border-b border-gray-200">
+                                <button
+                                    onClick={() => setActiveTab('info')}
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                        activeTab === 'info' 
+                                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Información del Producto
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('stock')}
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                        activeTab === 'stock' 
+                                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Stock en Sucursales
+                                </button>
+                            </div>
+                            
+                            {/* Contenido de las pestañas */}
+                            <div className="p-4 bg-gray-900 text-white min-h-64">
+                                {activeTab === 'info' && (
+                                    <div className="space-y-2">
+                                        <h3 className="font-bold text-lg text-blue-200">{producto.Articulo}</h3>
+                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                                <span className="text-gray-300">Código:</span>
+                                                <span className="ml-2 text-white">{producto.ItemCode}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Almacén:</span>
+                                                <span className="ml-2 text-white">{producto.CodAlmacen}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Lista precio:</span>
+                                                <span className="ml-2 text-white">{producto.ListaPrecio}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Impuesto:</span>
+                                                <span className="ml-2 text-white">{producto.Impuesto} - {producto.PorcImpto}%</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Código de barras:</span>
+                                                <span className="ml-2 text-white">{producto.CodigoBarras}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Existencias:</span>
+                                                <span className="ml-2 text-green-400 font-semibold">{producto.Cantidad}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-300">Comprometido:</span>
+                                                <span className="ml-2 text-yellow-400 font-semibold">{producto.Comprometido}</span>
+                                            </div>
+                                            <div className="col-span-2 border-t border-gray-700 pt-2 mt-2">
+                                                <span className="text-gray-300">Precio:</span>
+                                                <span className="ml-2 text-green-400 font-bold text-lg">${Funciones.formatearPrecio(producto.Precio)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {activeTab === 'stock' && (
+                                    <div>
+                                        <h3 className="font-bold text-lg text-blue-200 mb-3">STOCK EN OTRAS SUCURSALES</h3>
+                                        {loadingTiendas ? (
+                                            <div className="flex items-center justify-center py-8">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                                <span className="ml-2 text-gray-300">Cargando...</span>
+                                            </div>
+                                        ) : dataTiendas && dataTiendas.length > 0 ? (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {/* Encabezados */}
+                                                <div className="grid grid-cols-2 gap-4 border-b border-gray-600 pb-2 mb-2">
+                                                    <div className="text-gray-300 font-semibold">Sucursal</div>
+                                                    <div className="text-gray-300 font-semibold">Cantidad</div>
+                                                </div>
+                                                {/* Datos */}
+                                                {dataTiendas.map((item, index) => (
+                                                    <div className="grid grid-cols-2 gap-4 py-1 hover:bg-gray-800 rounded px-2 transition-colors" key={index}>
+                                                        <div className="text-white">{item.bodega}</div>
+                                                        <div className={`font-semibold ${item.cantidad > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {item.cantidad}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-400">
+                                                No hay información de stock disponible
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

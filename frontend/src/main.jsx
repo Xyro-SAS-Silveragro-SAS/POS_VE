@@ -11,6 +11,7 @@ import { ConnectionProvider } from './context/ConnectionContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { TourProvider } from '@reactour/tour'
 import { TourContextProvider } from './context/TourContext.jsx';
+import InfoProducto from './pages/external/InfoProducto.jsx';
 
 const root = document.getElementById('root');
 
@@ -28,6 +29,8 @@ createRoot(root).render(
                       <Route path="/login" element={<Login />} />
                       <Route path="/home" element={<Home />} />
                       <Route path="/proceso/:tipoProceso/:idProceso?" element={<Proceso />} />
+                      <Route path="/infoProducto/:bodega/:producto" element={<InfoProducto />} />
+                      
                     </Routes>
                 </BrowserRouter>
             </AuthProvider>

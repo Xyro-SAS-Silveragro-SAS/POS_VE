@@ -67,7 +67,7 @@ const Funciones = {
             return callback();
           });
     },
-    confirmacion:(titulo="Atencion",mensaje="",tipo="info",callback=()=>{},callbackCancel=()=>{},botonAceptar="ACEPTAR",botonCancelar="CANCELAR") =>{
+    confirmacion:(titulo="Atencion",mensaje="",tipo="info",callback=()=>{},callbackCancel=()=>{},botonAceptar="ACEPTAR",botonCancelar="CANCELAR", precarga=false) =>{
         const MySwal = withReactContent(Swal)
         MySwal.fire({
             title: titulo,
@@ -84,17 +84,21 @@ const Funciones = {
         .then((resultado) => {
           if(resultado.value){
 
-            Swal.fire({
-                title: 'Un momento por favor...',
-                text: 'Procesando su solicitud',
-                icon: 'info',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+            if(precarga){
+                Swal.fire({
+                    title: 'Un momento por favor...',
+                    text: 'Procesando su solicitud',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+
             return callback();
           }
           else{

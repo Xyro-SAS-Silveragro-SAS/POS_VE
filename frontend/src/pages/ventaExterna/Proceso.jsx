@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router"
+import { useParams, useNavigate, Link } from "react-router"
 import TopBarProceso from "../../components/global/TopBarProceso"
 import { useState, useEffect,useCallback  } from "react"
 import ModalClientes from "../../components/global/modal/ModalClientes"
@@ -12,6 +12,7 @@ import { db } from "../../db/db"
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 import ModalDetallesEntrega from "../../components/global/modal/ModalDetallesEntrega"
+import { API_MTS } from "../../config/config"
 
 
 const Proceso = () => {
@@ -140,7 +141,7 @@ const Proceso = () => {
                     in_estado:0,
                     dt_fecha_reg:new Date(),
                     tx_usua:currentUser ? currentUser.cd_sap : '',
-                    tx_comentarios:"",
+                    tx_comentarios:tipoProceso,
                     tx_nom_emp:currentUser ? currentUser.tx_empleado_sap : '',
                     in_cod_emp:0,
                     resp_api:'',
@@ -492,6 +493,47 @@ const Proceso = () => {
         );
     }
 
+    const handleConvertirPedido = () => {
+        Funciones.confirmacion("Atencion","Está a punto de convertir esta cotización en un pedido, ¿Desea continuar?","info", async()=>{
+            
+            // Clona la cabeza y las líneas para no mutar el estado original
+            const cabezaNuevaPedido = { ...cabezaPedido };
+            const uuidCotizacion    = cabezaNuevaPedido.id_consec
+            const nuevoIdConsec = uuidv4();
+            cabezaNuevaPedido.id_consec = nuevoIdConsec;
+            cabezaNuevaPedido.in_tipo = 'pedidos'; 
+            cabezaNuevaPedido.sync = 0; 
+            cabezaNuevaPedido.DocNum = 0;
+            cabezaNuevaPedido.DocEntry = 0;
+            cabezaNuevaPedido.in_estado = 0;
+            cabezaNuevaPedido.tx_comentarios = `Pedido generado de la cotizacion: ${uuidCotizacion}`;
+            cabezaNuevaPedido.dt_fecha_reg = new Date();
+
+            //borro el id actual de la cabza acutal para que Dexie cree uno nuevo
+            delete cabezaNuevaPedido.id; 
+            //Inserto la nueva cabeza
+            const nuevoIdCabeza = await db.cabeza.add(cabezaNuevaPedido);
+
+            // Clona y actualiza las líneas
+            const lineasNuevoPedido = listaCarrito.map(item => {
+                const nuevaLinea = { ...item };
+                nuevaLinea.in_id_cabeza = nuevoIdCabeza;
+                nuevaLinea.sync = 0;
+                nuevaLinea.dt_fecha_reg = new Date();
+                // Opcional: limpia otros campos si es necesario
+                delete nuevaLinea.id; // Elimina el id anterior para que Dexie genere uno nuevo
+                return nuevaLinea;
+            });
+
+            // Inserta todas las líneas nuevas
+            await db.lineas.bulkAdd(lineasNuevoPedido);
+
+            // Redirige al nuevo pedido
+            navigate(`/proceso/pedidos/${nuevoIdCabeza}`);
+            window.location.reload();
+        })
+    };
+
     return (
         <>
             <TopBarProceso titulo={getTitulo()} toggleIA={toggleIA} listaCarrito={listaCarrito} tipoProceso={tipoProceso} idProceso={idProceso} startTour={startTour} setShowDetallesEntrega={abreModalDetallesEntrega} cabezaPedido={cabezaPedido}/>
@@ -519,7 +561,7 @@ const Proceso = () => {
                         <h2 className="col-span-11 grid items-center uppercase">
                             Productos agregados
                             <small className="font-normal cantidadesPedido">
-                                Solicitadas: {totalSolicitadas} | Bonificadas: {totalBonificadas}
+                                Líneas: {listaCarrito.length} | Solicitadas: {totalSolicitadas} | Bonificadas: {totalBonificadas}
                             </small>
                             {/* <span className="bg-red-700 p-2 rounded-full text-white w-[30px] h-[30px] flex items-center justify-center ml-2">{listaCarrito.length}</span> */}
                         </h2> 
@@ -561,115 +603,141 @@ const Proceso = () => {
             </div>
             
             {/* Panel de Totales Colapsable */}
-            <div className="w-full bg-black text-white fixed bottom-0 totales">
-                <div className="p-4">
-                    {/* Botón de toggle con flecha */}
-                    <div className="flex justify-center mb-0 relative">
-                        <button 
-                            onClick={toggleDetails}
-                            className="flex items-center justify-center transition-colors duration-100 absolute bg-black top-[-30px] rounded-t-lg py-1 px-10"
-                        >
-                            <svg 
-                                xmlns="http://www.w3.org/2000/svg" 
-                                viewBox="0 0 24 24" 
-                                fill="currentColor" 
-                                className={`w-6 h-6 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`}
+            <div className="w-full  bg-black text-white fixed bottom-0 totales">
+                <div className="w-full lg:w-[50%] m-auto">
+                    <div className="p-4">
+                        {/* Botón de toggle con flecha */}
+                        <div className="flex justify-center mb-0 relative">
+                            <button 
+                                onClick={toggleDetails}
+                                className="flex items-center justify-center transition-colors duration-100 absolute bg-black top-[-30px] rounded-t-lg py-1 px-10"
                             >
-                                <path fillRule="evenodd" d="M11.47 7.72a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 1 1-1.06 1.06L12 9.31l-6.97 6.97a.75.75 0 0 1-1.06-1.06l7.5-7.5Z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    viewBox="0 0 24 24" 
+                                    fill="currentColor" 
+                                    className={`w-6 h-6 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`}
+                                >
+                                    <path fillRule="evenodd" d="M11.47 7.72a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 1 1-1.06 1.06L12 9.31l-6.97 6.97a.75.75 0 0 1-1.06-1.06l7.5-7.5Z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
 
-                    {/* Detalles colapsables */}
-                    <div className={`overflow-hidden transition-all duration-75 ${showDetails ? 'max-h-auto opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="space-y-3 mb-4">
+                        {/* Detalles colapsables */}
+                        <div className={`overflow-hidden transition-all duration-75 ${showDetails ? 'max-h-auto opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="space-y-3 mb-4">
 
 
-                            {/* muestro los detalles solo cuando ya este sincronizado */}
-                             {cabezaPedido && cabezaPedido.sync === 1 && (
-                                <>
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                        <span className="font-bold">FECHA DOC:</span>
-                                        <span className="font-normal uppercase">
-                                            {cabezaPedido.dt_fecha_reg.toISOString().split('T')[0]}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                        <span className="font-bold">FECHA ENTREGA:</span>
-                                        <span className="font-normal uppercase">
-                                            {cabezaPedido.fechaEntrega}
-                                        </span>
-                                    </div>
-                                    { cabezaPedido && cabezaPedido.in_tipo === 'pedidos' && (
+                                {/* muestro los detalles solo cuando ya este sincronizado */}
+                                {cabezaPedido && cabezaPedido.sync === 1 && (
+                                    <>
                                         <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                            <span className="font-bold">CODIGO SAP:</span>
+                                            <span className="font-bold">FECHA DOC:</span>
                                             <span className="font-normal uppercase">
-                                                {cabezaPedido.DocNum}
+                                                {cabezaPedido.dt_fecha_reg.toISOString().split('T')[0]}
                                             </span>
                                         </div>
-                                    )}
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                        <span className="font-bold">ESTADO:</span>
-                                        <span className="font-normal uppercase">
-                                            {cabezaPedido.sync === 1? 'Sincronizado' : 'No sincronizado'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                        <span className="font-bold">TIPO ENVIO:</span>
-                                        <span className="font-normal uppercase">
-                                            {cabezaPedido.tipoEnvio !== "" ? cabezaPedido.tipoEnvio : 'Desconocido'}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="grid py-2 border-b border-gray-700">
-                                        <div className="font-bold">DESTINO:</div>
-                                        <div>
-                                            {cabezaPedido.tx_dir_add_cli_pos !== "" ? cabezaPedido.tx_dir_add_cli_pos : 'Desconocido'} - 
-                                            {cabezaPedido.tx_dir_cli_pos !== "" ? cabezaPedido.tx_dir_cli_pos : 'Desconocido'}
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span className="font-bold">FECHA ENTREGA:</span>
+                                            <span className="font-normal uppercase">
+                                                {cabezaPedido.fechaEntrega}
+                                            </span>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="grid py-2 border-b border-gray-700">
-                                        <div className="font-bold">ASESOR COMERCIAL:</div>
-                                        <div>
-                                            {cabezaPedido.tx_nom_emp !== "" ? cabezaPedido.tx_nom_emp : 'Desconocido'}
+                                        { cabezaPedido && cabezaPedido.in_tipo === 'pedidos' && (
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                                <span className="font-bold">CODIGO SAP:</span>
+                                                <span className="font-normal uppercase">
+                                                    {cabezaPedido.DocNum}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span className="font-bold">ESTADO:</span>
+                                            <span className="font-normal uppercase">
+                                                {cabezaPedido.sync === 1? 'Sincronizado' : 'No sincronizado'}
+                                            </span>
                                         </div>
-                                    </div>
-                                    <div className="grid py-2 border-b border-gray-700">
-                                        <div className="font-bold">COMENTARIOS:</div>
-                                        <div>
-                                            {cabezaPedido.observaciones !== "" ? cabezaPedido.observaciones : 'Desconocido'}
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span className="font-bold">TIPO ENVIO:</span>
+                                            <span className="font-normal uppercase">
+                                                {cabezaPedido.tipoEnvio !== "" ? cabezaPedido.tipoEnvio : 'Desconocido'}
+                                            </span>
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                        
+                                        <div className="grid py-2 border-b border-gray-700">
+                                            <div className="font-bold">DESTINO:</div>
+                                            <div>
+                                                {cabezaPedido.tx_dir_add_cli_pos !== "" ? cabezaPedido.tx_dir_add_cli_pos : 'Desconocido'} - 
+                                                {cabezaPedido.tx_dir_cli_pos !== "" ? cabezaPedido.tx_dir_cli_pos : 'Desconocido'}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="grid py-2 border-b border-gray-700">
+                                            <div className="font-bold">ASESOR COMERCIAL:</div>
+                                            <div>
+                                                {cabezaPedido.tx_nom_emp !== "" ? cabezaPedido.tx_nom_emp : 'Desconocido'}
+                                            </div>
+                                        </div>
+                                        <div className="grid py-2 border-b border-gray-700">
+                                            <div className="font-bold">COMENTARIOS:</div>
+                                            <div>
+                                                {cabezaPedido.observaciones !== "" ? cabezaPedido.observaciones : 'Desconocido'}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                
 
 
 
-                            {/* Subtotal */}
-                            <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                <span className="font-bold uppercase">Subtotal:</span>
-                                <span className="font-normal">
-                                    ${cabezaPedido.in_subtot_pos ? cabezaPedido.in_subtot_pos.toLocaleString('es-CO') : '0'}
-                                </span>
-                            </div>
-                            
-                            {/* Impuestos */}
-                            <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                                <span className="font-bold uppercase">Impuestos (IVA):</span>
-                                <span className="font-normal">
-                                    ${cabezaPedido.in_vlr_total_imp ? cabezaPedido.in_vlr_total_imp.toLocaleString('es-CO') : '0'}
-                                </span>
+                                {/* Subtotal */}
+                                <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                    <span className="font-bold uppercase">Subtotal:</span>
+                                    <span className="font-normal">
+                                        ${cabezaPedido.in_subtot_pos ? cabezaPedido.in_subtot_pos.toLocaleString('es-CO') : '0'}
+                                    </span>
+                                </div>
+                                
+                                {/* Impuestos */}
+                                <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                    <span className="font-bold uppercase">Impuestos (IVA):</span>
+                                    <span className="font-normal">
+                                        ${cabezaPedido.in_vlr_total_imp ? cabezaPedido.in_vlr_total_imp.toLocaleString('es-CO') : '0'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    {/* Total - siempre visible */}
-                    <div className="flex justify-between items-center py-3">
-                        <span className="text-lg font-bold">TOTAL:</span>
-                        <span className="text-xl font-bold">
-                            ${cabezaPedido.in_vlr_total ? cabezaPedido.in_vlr_total.toLocaleString('es-CO') : '0'}
-                        </span>
+                        
+                        {/* Total - siempre visible */}
+                        <div className="flex justify-between items-center py-3">
+                            <span className="text-lg font-bold">TOTAL:</span>
+                            <span className="text-xl font-bold">
+                                ${cabezaPedido.in_vlr_total ? cabezaPedido.in_vlr_total.toLocaleString('es-CO') : '0'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center py-3 gap-2">
+                        {cabezaPedido && cabezaPedido.sync === 1 && cabezaPedido.in_tipo ==='cotizaciones' && (
+                            <>
+                                <Link to={`${API_MTS}api/cotizacion/pdf/${cabezaPedido.id_consec}`} target="_blank" className="m-auto bg-red-700 p-4 lg:w-[50%] font-bold rounded-lg flex items-center  cursor-pointer justify-between">
+                                    BAJAR PDF
+                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" className="size-5 ml-4">
+                                        <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 144-208 0c-35.3 0-64 28.7-64 64l0 144-48 0c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128zM176 352l32 0c30.9 0 56 25.1 56 56s-25.1 56-56 56l-16 0 0 32c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-48 0-80c0-8.8 7.2-16 16-16zm32 80c13.3 0 24-10.7 24-24s-10.7-24-24-24l-16 0 0 48 16 0zm96-80l32 0c26.5 0 48 21.5 48 48l0 64c0 26.5-21.5 48-48 48l-32 0c-8.8 0-16-7.2-16-16l0-128c0-8.8 7.2-16 16-16zm32 128c8.8 0 16-7.2 16-16l0-64c0-8.8-7.2-16-16-16l-16 0 0 96 16 0zm80-112c0-8.8 7.2-16 16-16l48 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 32 32 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 48c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-64 0-64z"/>
+                                    </svg>
+                             
+
+                                </Link>
+                                
+                                <button onClick={handleConvertirPedido} className="m-auto bg-[#708F65] p-4 lg:w-[50%] font-bold rounded-lg flex items-center  cursor-pointer justify-between">
+                                    CONVERTIR EN PEDIDO
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
+                                        <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM12.75 12a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V18a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V12Z" clipRule="evenodd" />
+                                        <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -696,6 +764,7 @@ const Proceso = () => {
                 idProceso={idProceso}
                 tipoProceso = {tipoProceso}
                 handleRefresh={handleRefresh}
+                cabezaPedido={cabezaPedido}
             />
         </>
     )

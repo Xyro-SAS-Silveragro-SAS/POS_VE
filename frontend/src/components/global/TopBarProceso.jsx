@@ -4,6 +4,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import { AudioLines } from "lucide-react"
 import Funciones from "../../helpers/Funciones";
 import { db } from "../../db/db";
+import { API_MTS } from "../../config/config";
+import { Link } from "react-router";
 
 const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProceso=null, idProceso=0, startTour=null, setShowDetallesEntrega=null, cabezaPedido=null }) => {
     const navigate                          = useNavigate()
@@ -86,6 +88,7 @@ const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProce
                         {/* <small className="px-4 px-1 bg-green-700 rounded-lg font-bold ml-2">ONLINE</small> */}
                     </div>
                     <div className="col-span-4 flex items-center justify-end">
+
                         {cabezaPedido && cabezaPedido.sync === 1 ? (
                             <>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-cloud-check-icon lucide-cloud-check"><path d="m17 15-5.5 5.5L9 18"/><path d="M5 17.743A7 7 0 1 1 15.71 10h1.79a4.5 4.5 0 0 1 1.5 8.742"/></svg>
@@ -104,7 +107,6 @@ const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProce
                                 </svg>
                             </>
                         )}
-
                     </div>
                 </div>
             </div>
