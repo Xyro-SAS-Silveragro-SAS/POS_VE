@@ -7,7 +7,7 @@ import { db } from "../../db/db";
 import { API_MTS } from "../../config/config";
 import { Link } from "react-router";
 
-const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProceso=null, idProceso=0, startTour=null, setShowDetallesEntrega=null, cabezaPedido=null }) => {
+const TopBarProceso = ({titulo = '', toggleIA = null, listaCarrito = [], tipoProceso=null, idProceso=0, startTour=null, setShowDetallesEntrega=null, cabezaPedido=null }) => {
     const navigate                          = useNavigate()
     const [online, setStatus]               = useState(navigator.onLine);
     const [bodHeader, setBodHeader]         = useState(localStorage.getItem('bodega') || '0');
@@ -56,7 +56,7 @@ const TopBarProceso = ({titulo = '', toggleIA = null,listaCarrito = [],tipoProce
 
     const iniciaAna = () =>{
         //toggleIA();
-        Funciones.alerta('Oops...','DORA no esta disponible en este momento. Disculpa las molestias', 'info', () => {})
+       Funciones.alerta('Oops...','DORA no esta disponible en este momento. Disculpa las molestias', 'info', () => {})
     }
 
     return (

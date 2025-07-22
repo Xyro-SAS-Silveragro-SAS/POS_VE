@@ -183,17 +183,18 @@ apiRouter.get('/', async(req, res) => {
 apiRouter.get('/procesaProductos', async(req, res) => {
     try {
         //pido el token del api de SL
-        const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
-          user: process.env.USER_TOKEN,
-          token: process.env.TOKEN
-        });
+        // const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
+        //   user: process.env.USER_TOKEN,
+        //   token: process.env.TOKEN
+        // });
         
         // Guardamos el token en sessionStorage
-        if (resp_token.data && resp_token.data.token) {
-            const token = resp_token.data.token;
+        // if (resp_token.data && resp_token.data.token) {
+            //const token = resp_token.data.token;
             const response = await axios.get(`${process.env.API_MTS_NEW}inventario/bodega/BOD`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        //'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer `,
                         'Content-Type': 'application/json'
                     }
                 }
@@ -213,12 +214,12 @@ apiRouter.get('/procesaProductos', async(req, res) => {
                 message: `Procesamiento completado`,
                 resultado: resultado
             });
-        } else {
-            res.status(401).json({
-                success: false,
-                message: 'No se pudo obtener el token de autenticación'
-            });
-        }
+        // } else {
+        //     res.status(401).json({
+        //         success: false,
+        //         message: 'No se pudo obtener el token de autenticación'
+        //     });
+        // }
     } catch (error) {
         console.error('Error en procesaProductos:', error);
         res.status(500).json({
@@ -233,22 +234,22 @@ apiRouter.get('/procesaProductos', async(req, res) => {
 apiRouter.get('/procesaClientes', async(req, res) => {
     try {
         //pido el token del api de SL
-        const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
-          user: process.env.USER_TOKEN,
-          token: process.env.TOKEN
-        });
+        // const resp_token = await axios.post(`${process.env.API_SL}auth/getToken`, {
+        //   user: process.env.USER_TOKEN,
+        //   token: process.env.TOKEN
+        // });
         
         // Guardamos el token en sessionStorage
-        if (resp_token.data && resp_token.data.token) {
-            const token = resp_token.data.token;
+        // if (resp_token.data && resp_token.data.token) {
+            //const token = resp_token.data.token;
             const response = await axios.get(`${process.env.API_MTS_NEW}clientes/vexterna`, {
                     headers: {
-                        'Authorization': `Bearer ${token}`,
+                        //'Authorization': `Bearer ${token}`,
+                        'Authorization': `Bearer `,
                         'Content-Type': 'application/json'
                     }
                 }
             );
-
             const clientes = response.data.datos;
             console.log(`Recibidos ${clientes.length} clientes para procesar`);
             
@@ -263,12 +264,12 @@ apiRouter.get('/procesaClientes', async(req, res) => {
                 message: `Procesamiento completado`,
                 resultado: resultado
             });
-        } else {
-            res.status(401).json({
-                success: false,
-                message: 'No se pudo obtener el token de autenticación'
-            });
-        }
+        // } else {
+        //     res.status(401).json({
+        //         success: false,
+        //         message: 'No se pudo obtener el token de autenticación'
+        //     });
+        // }
     } catch (error) {
         console.error('Error en procesaProductos:', error);
         res.status(500).json({

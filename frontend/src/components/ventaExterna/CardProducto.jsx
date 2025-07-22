@@ -192,6 +192,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
 
 
                     <span className='text-md w-full mt-2'>
+                        <strong className="mr-1">Impuesto:</strong> {producto.Impuesto} - {producto.PorcImpto}%
+                    </span>
+                    <span className='text-md w-full mt-2'>
                         <strong className="mr-1">Stock:</strong> {producto.Cantidad }
                     </span>
 
@@ -210,6 +213,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                         <strong className="mr-1">V. Total:</strong> ${Funciones.formatearPrecio(producto.Precio * (producto.CantSolicitada || 0))}
                     </span>
 
+                    <span className='text-md w-full'>
+                        <strong>Fecha actual:</strong> {new Date().toLocaleDateString()}
+                    </span>
 
 
                     {sync === 0 && onlyView === false ? (
@@ -249,7 +255,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                     <div className="col-span-2 flex justify-center items-start h-auto pt-4 relative">
                         {buttonAdd && (
                             <div className='bg-black p-2 rounded-full text-white items-center absolute right-2 bottom-10'>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer" onClick={() => {handleAddToCar(producto)}}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer" onClick={() => {handleAddToCar(producto); setProductos(prev => ({ ...prev, CantSolicitada: "0", CantBonificada: "0" }));}}>
                                     <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
                                 </svg>
                             </div>

@@ -198,22 +198,23 @@ const ModalIA = ({showIA = false, toggleIA = null, handleAddToCar=null, setClien
             Texto del usuario: ${text};
         `;
 
-        //uso de gemini
-        // const response = await gemini.models.generateContent({
-        //     model: "gemini-2.0-flash",
-        //     contents: prompt
-        // }); 
-
         //uso de ollama con el modelo llama3.2:latest
         try {
-            const response = await axios.post(`${OLLAMA_URL}api/generate`, {
-            model: MODEL_NAME,
-            prompt: prompt,
-            stream: false
-            });
+            // const response = await axios.post(`${OLLAMA_URL}api/generate`, {
+            // model: MODEL_NAME,
+            // prompt: prompt,
+            // stream: false
+            // });
+
+            //usando el modelo Gemini
+            const response = await gemini.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: prompt
+            }); 
 
 
-            const textoSalida = formatResponse(response.data.response.trim());
+            //const textoSalida = formatResponse(response.data.response.trim());// Para OLLAMA
+            const textoSalida = formatResponse(response.text.trim());
             const dataBuscar  = {
                 query: JSON.parse(formatResponse(textoSalida)),
                 limit:1
