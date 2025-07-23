@@ -171,46 +171,48 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                     
                         <div className="space-y-6">
                             {/* Fecha de Entrega */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Fecha de Entrega
-                                </label>
-                                <input
-                                    type="date"
-                                    min={(() => {
-                                        const tomorrow = new Date();
-                                        tomorrow.setDate(tomorrow.getDate() + 1);
-                                        // Usar métodos locales para evitar desfase por zona horaria
-                                        const year = tomorrow.getFullYear();
-                                        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                                        const day = String(tomorrow.getDate()).padStart(2, '0');
-                                        return `${year}-${month}-${day}`;
-                                    })()}
-                                    name="fechaEntrega"
-                                    value={formData.fechaEntrega}
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                                    required
-                                />
-                            </div>
+                            <div className='grid grid-cols-2 gap-4'>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Fecha de Entrega
+                                    </label>
+                                    <input
+                                        type="date"
+                                        min={(() => {
+                                            const tomorrow = new Date();
+                                            tomorrow.setDate(tomorrow.getDate() + 1);
+                                            // Usar métodos locales para evitar desfase por zona horaria
+                                            const year = tomorrow.getFullYear();
+                                            const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                            const day = String(tomorrow.getDate()).padStart(2, '0');
+                                            return `${year}-${month}-${day}`;
+                                        })()}
+                                        name="fechaEntrega"
+                                        value={formData.fechaEntrega}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                        required
+                                    />
+                                </div>
 
-                            {/* Tipo de Envío */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tipo de Envío
-                                </label>
-                                <select
-                                    name="tipoEnvio"
-                                    value={formData.tipoEnvio}
-                                    onChange={handleChange}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                                    required
-                                >
-                                    <option value="">Seleccione un tipo de envío</option>
-                                    <option value="distribucion">Distribución</option>
-                                    <option value="remesado">Remesado</option>
-                                    <option value="bodega">Recibir en bodega</option>
-                                </select>
+                                {/* Tipo de Envío */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Tipo de Envío
+                                    </label>
+                                    <select
+                                        name="tipoEnvio"
+                                        value={formData.tipoEnvio}
+                                        onChange={handleChange}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                        required
+                                    >
+                                        <option value="">Seleccione un tipo de envío</option>
+                                        <option value="distribucion">Distribución</option>
+                                        <option value="remesado">Remesado</option>
+                                        <option value="bodega">Recibir en bodega</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div>

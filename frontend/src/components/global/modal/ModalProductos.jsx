@@ -24,6 +24,7 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
             const productosBusqueda = items.filter((item) => {
                 return item.LlaveArt.toLowerCase().includes(busqueda.toLowerCase())
             })
+            productosBusqueda.sort((a, b) => b.Cantidad - a.Cantidad);
             setProductos(productosBusqueda)
         })
     }

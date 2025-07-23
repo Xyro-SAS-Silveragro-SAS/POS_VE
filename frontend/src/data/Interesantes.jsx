@@ -1,4 +1,4 @@
-const datosInteresantes = [
+const datosInteresantesPets = [
     "Sabías que el 80% de los alimentos del mundo provienen de solo 12 especies de plantas y 5 especies de animales. ¡Apoyamos a nuestros productores!",
     "¿Sabías que los gatos pueden hacer más de 100 sonidos diferentes, mientras que los perros solo pueden hacer alrededor de 10? ¡Cada uno tiene su propio lenguaje!",
     "La agricultura es la base de nuestra civilización. ¡Agradecemos a quienes trabajan la tierra cada día!",
@@ -19,5 +19,20 @@ const datosInteresantes = [
     "Las aves pueden ver colores ultravioleta que los humanos no pueden. ¡Un mundo de colores inimaginables!",
     "Conectando granjeros con las mejores soluciones para sus animales. ¡Casi listo!",
     "El uso de la tecnología en la agricultura moderna ayuda a optimizar recursos y aumentar la producción de manera sostenible.",
+]
+
+const datosInteresantes = [
+    "Estudia tu producto al detalle: Conoce sus características, beneficios y posibles objeciones.",
+    "Identifica tus clientes: Entiende sus necesidades, preferencias y objetivos.",
+    "Planifica todo el proceso: Define pasos claros desde el primer contacto hasta el cierre.",
+    "Mantén la comunicación abierta: Mantén una conversación fluida y responde a las preguntas de manera clara.",
+    "Escucha activamente: Presta atención real a lo que el cliente dice y cómo lo dice.",
+    "Estudia tu lenguaje no verbal: Cuida tus gestos, postura y tono de voz; también comunican.",
+    "Mantente al día de las últimas tendencias: Actualízate para ofrecer soluciones modernas y relevantes.",
+    "Trabaja para el beneficio de tus clientes: Busca que ellos ganen, no solo cerrar una venta.",
+    "Aprende a leer entre líneas: Detecta lo que el cliente no dice directamente.",
+    "Ten siempre a mano al menos una propuesta opcional: Ofrece alternativas que se ajusten a diferentes necesidades.",
+    "Trabaja también la post-venta: Acompaña al cliente después de comprar para fidelizarlo.",
+    "Mide tus resultados: Analiza lo que funciona y mejora continuamente.",
 ]
 export default datosInteresantes 

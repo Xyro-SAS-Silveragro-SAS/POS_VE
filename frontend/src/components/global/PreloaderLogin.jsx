@@ -234,7 +234,7 @@ const PreloaderLogin = ({ loading, logo }) => {
                 {/* Contenido */}
                 <div className="flex-1">
                   <h4 className="font-semibold text-black mb-2 text-sm">
-                    ¿Sabías que?
+                    Tips de ventas
                   </h4>
                   <p 
                     className={`text-sm leading-relaxed opacity-90 text-black fact-text-transition ${
