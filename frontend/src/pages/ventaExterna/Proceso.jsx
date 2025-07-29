@@ -454,8 +454,11 @@ const Proceso = () => {
         // Verificar si clienteSel tiene propiedades (es un objeto con datos)
         const clienteSeleccionado = clienteSel && Object.keys(clienteSel).length > 0;
         
-        if(!clienteSeleccionado && listaCarrito.length === 0){
-            Funciones.alerta("Atención","Debe seleccionar un cliente y agregar productos al carrito antes de continuar","info",()=>{})
+        if(!clienteSeleccionado){
+            Funciones.alerta("Atención","Debe seleccionar un cliente","info",()=>{})
+        }
+        else if(clienteSeleccionado && listaCarrito.length === 0){
+            Funciones.alerta("Atención","Debe agregar productos a la transacción para poder continuar","info",()=>{})
         }
         else{
             setShowDetallesEntrega(valor);
@@ -580,7 +583,7 @@ const Proceso = () => {
 
                         {listaCarrito && listaCarrito.length > 0 ? (
                             listaCarrito.map((item, index) => (
-                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} initializeProcess={initializeProcess} modificaDb={true} sync={cabezaPedido.sync} calculaYActualizaTotales={refrescaCatidades}/>
+                                <CardProducto item={item} key={index} index={index} buttonAdd={false} buttonDel={true} modificaDb={true} sync={cabezaPedido.sync} calculaYActualizaTotales={refrescaCatidades}/>
                         ))
                         ) : (
                             <div className="flex flex-col items-center justify-center py-12">

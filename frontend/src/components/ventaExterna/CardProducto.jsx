@@ -10,7 +10,7 @@ import { useAuth } from "../../context/AuthContext"
 
     
 
-const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=true, buttonDel=false, initializeProcess=null,modificaDb=false, sync=null, onlyView=false, calculaYActualizaTotales=null}) => {
+const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=true, buttonDel=false, modificaDb=false, sync=null, onlyView=false, calculaYActualizaTotales=null}) => {
     const [producto, setProductos]              = useState('')
     const [showImageModal, setShowImageModal]   = useState(false)
     const [imageUrl, setImageUrl]               = useState('')
@@ -135,7 +135,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                 .equals(item.id)
                 .delete()
                 .then(() => {
-                    initializeProcess()
+                    calculaYActualizaTotales()
                 })
                 .catch((error) => {
                     console.error('Error al eliminar el producto de la línea:', error);
