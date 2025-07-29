@@ -12,12 +12,9 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { TourProvider } from '@reactour/tour'
 import { TourContextProvider } from './context/TourContext.jsx';
 import InfoProducto from './pages/external/InfoProducto.jsx';
-
 const root = document.getElementById('root');
-
 // Steps vacíos - se manejan desde el TourContext
 const initialSteps = [];
-
 createRoot(root).render(
   <ConnectionProvider>
       <TourProvider steps={initialSteps}>
