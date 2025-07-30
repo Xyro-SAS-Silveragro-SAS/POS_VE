@@ -46,12 +46,10 @@ const Home = () => {
   },[])   
   
   useEffect(() => {
-    if(!isLoading){
-      if(!isAuthenticated){
-        navigate('/login')
-      }
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login');
     }
-  },[isAuthenticated, isLoading, navigate])
+  }, [isLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
     const getListaProcesos = async () => {
