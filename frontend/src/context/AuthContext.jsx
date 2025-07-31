@@ -114,7 +114,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('usuario');
     setCurrentUser(null);
     setIsAuthenticated(false);
-    //document.location = '/login'
     return true;
   };
 
