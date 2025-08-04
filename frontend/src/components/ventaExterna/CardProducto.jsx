@@ -17,7 +17,6 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     const [dataTiendas, setDataTiendas]         = useState(null);
     const [loadingTiendas, setLoadingTiendas]   = useState(false)
     const [activeTab, setActiveTab]             = useState('info');
-    const [showLotesModal, setShowLotesModal]   = useState(false);
     const [lotesData, setLotesData]             = useState([]);
     const [loadingLotes, setLoadingLotes]       = useState(false);
     const { currentUser }                       = useAuth();
@@ -51,7 +50,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     }, [showImageModal, producto.ItemCode]);
 
     useEffect(() => {
-        if (showLotesModal) {
+        if (showImageModal && activeTab === 'lotes') {
             const fetchLotes = async () => {
                 try {
                     setLoadingLotes(true);
@@ -70,7 +69,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             };
             fetchLotes();
         }
-    }, [showLotesModal, producto.ItemCode]);
+    }, [showImageModal, activeTab, producto.ItemCode]);
 
     const handleChangePrecio = (item) => {
         Funciones.alertaBox("Ajuste de precio","Escriba el precio si desea cambiarlo","info", (valorCaja)=>{
@@ -225,15 +224,6 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                         <strong className="mr-1">Stock:</strong> {producto.Cantidad }
                     </span>
 
-                    <span className='text-md w-full mt-1'>
-                        <button
-                            onClick={() => setShowLotesModal(true)}
-                            className="text-blue-500 hover:text-blue-700 text-sm font-semibold underline"
-                        >
-                            Ver lotes
-                        </button>
-                    </span>
-
                     <span className='text-md mt-2 w-full flex items-center' >
                         <strong className="mr-1">V. Uni:</strong> ${Funciones.formatearPrecio(producto.Precio )}
                         {sync === 0 && onlyView === false && currentUser.in_perfil === 27 && (
@@ -348,7 +338,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
-                                    Información del Producto
+                                    Info
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('stock')}
@@ -359,6 +349,16 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                     }`}
                                 >
                                     Stock en Sucursales
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('lotes')}
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                        activeTab === 'lotes'
+                                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Lotes
                                 </button>
                             </div>
                             
@@ -436,60 +436,40 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                         )}
                                     </div>
                                 )}
+
+                                {activeTab === 'lotes' && (
+                                    <div>
+                                        <h3 className="font-bold text-lg text-blue-200 mb-3">Lotes del Producto</h3>
+                                        {loadingLotes ? (
+                                            <div className="flex items-center justify-center py-8">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                                <span className="ml-2 text-gray-300">Cargando lotes...</span>
+                                            </div>
+                                        ) : lotesData && lotesData.length > 0 ? (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                <div className="grid grid-cols-3 gap-4 border-b border-gray-600 pb-2 mb-2">
+                                                    <div className="text-gray-300 font-semibold">Lote</div>
+                                                    <div className="text-gray-300 font-semibold">Fecha Vto</div>
+                                                    <div className="text-gray-300 font-semibold">Cantidad</div>
+                                                </div>
+                                                {lotesData.map((lote, index) => (
+                                                    <div className="grid grid-cols-3 gap-4 py-1 hover:bg-gray-800 rounded px-2 transition-colors" key={index}>
+                                                        <div className="text-white">{lote.Lote}</div>
+                                                        <div className="text-white">{new Date(lote.ExpDate).toLocaleDateString()}</div>
+                                                        <div className={`font-semibold ${lote.Cantidad > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {lote.Cantidad}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-400">
+                                                No hay información de lotes disponible.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de Lotes */}
-            {showLotesModal && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowLotesModal(false)}>
-                    <div className="relative w-full max-w-lg bg-white rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
-                        {/* Cabecera del Modal */}
-                        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-800">Lotes para {producto.Articulo}</h3>
-                            <button
-                                onClick={() => setShowLotesModal(false)}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Contenido del Modal */}
-                        <div className="p-4 max-h-96 overflow-y-auto">
-                            {loadingLotes ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                                    <span className="ml-2 text-gray-500">Cargando lotes...</span>
-                                </div>
-                            ) : lotesData && lotesData.length > 0 ? (
-                                <table className="w-full text-sm text-left text-gray-500">
-                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3">Lote</th>
-                                            <th scope="col" className="px-6 py-3">Fecha de Vencimiento</th>
-                                            <th scope="col" className="px-6 py-3">Cantidad</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {lotesData.map((lote, index) => (
-                                            <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                                                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{lote.Lote}</td>
-                                                <td className="px-6 py-4">{new Date(lote.ExpDate).toLocaleDateString()}</td>
-                                                <td className="px-6 py-4">{lote.Cantidad}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    No se encontraron lotes para este producto.
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
