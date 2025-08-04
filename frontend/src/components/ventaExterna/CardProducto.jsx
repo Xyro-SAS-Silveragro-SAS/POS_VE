@@ -307,13 +307,13 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                         {/* Botón de cerrar */}
                         <button 
                             onClick={closeImageModal}
-                            className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
+                            className="cursor-pointer absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-700">
                                 <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                             </svg>
                         </button>
-                        <button className="absolute top-4 left-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10" onClick={shareProduct}>
+                        <button className="cursor-pointer absolute top-4 left-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10" onClick={shareProduct}>
                             <Share2 className="w-5 h-5 " />
                         </button>
                         
@@ -332,7 +332,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                             <div className="flex border-b border-gray-200">
                                 <button
                                     onClick={() => setActiveTab('info')}
-                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
                                         activeTab === 'info' 
                                             ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -342,7 +342,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('stock')}
-                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
                                         activeTab === 'stock' 
                                             ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -352,7 +352,7 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('lotes')}
-                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
                                         activeTab === 'lotes'
                                             ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
