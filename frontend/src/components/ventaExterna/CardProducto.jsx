@@ -17,6 +17,8 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     const [dataTiendas, setDataTiendas]         = useState(null);
     const [loadingTiendas, setLoadingTiendas]   = useState(false)
     const [activeTab, setActiveTab]             = useState('info');
+    const [lotesData, setLotesData]             = useState([]);
+    const [loadingLotes, setLoadingLotes]       = useState(false);
     const { currentUser }                       = useAuth();
 
     useEffect(() => {
@@ -46,6 +48,28 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             fetchTiendas();
         }
     }, [showImageModal, producto.ItemCode]);
+
+    useEffect(() => {
+        if (showImageModal && activeTab === 'lotes') {
+            const fetchLotes = async () => {
+                try {
+                    setLoadingLotes(true);
+                    const response = await ApiSL.get(`/api/lotes/articulo/${localStorage.getItem('bodega')}/${producto.ItemCode}`);
+                    if (response.data.continuar === 1) {
+                        setLotesData(response.data.datos);
+                    } else {
+                        setLotesData([]);
+                    }
+                } catch (e) {
+                    console.log("Error fetching lotes:", e);
+                    setLotesData([]);
+                } finally {
+                    setLoadingLotes(false);
+                }
+            };
+            fetchLotes();
+        }
+    }, [showImageModal, activeTab, producto.ItemCode]);
 
     const handleChangePrecio = (item) => {
         Funciones.alertaBox("Ajuste de precio","Escriba el precio si desea cambiarlo","info", (valorCaja)=>{
@@ -283,13 +307,13 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                         {/* Botón de cerrar */}
                         <button 
                             onClick={closeImageModal}
-                            className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
+                            className="cursor-pointer absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-gray-700">
                                 <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                             </svg>
                         </button>
-                        <button className="absolute top-4 left-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10" onClick={shareProduct}>
+                        <button className="cursor-pointer absolute top-4 left-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors duration-200 z-10" onClick={shareProduct}>
                             <Share2 className="w-5 h-5 " />
                         </button>
                         
@@ -308,23 +332,33 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                             <div className="flex border-b border-gray-200">
                                 <button
                                     onClick={() => setActiveTab('info')}
-                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
                                         activeTab === 'info' 
                                             ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
-                                    Información del Producto
+                                    Info
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('stock')}
-                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 ${
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
                                         activeTab === 'stock' 
                                             ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50' 
                                             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                                 >
                                     Stock en Sucursales
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('lotes')}
+                                    className={`flex-1 py-3 px-4 text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                                        activeTab === 'lotes'
+                                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    Lotes
                                 </button>
                             </div>
                             
@@ -398,6 +432,43 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                         ) : (
                                             <div className="text-center py-8 text-gray-400">
                                                 No hay información de stock disponible
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'lotes' && (
+                                    <div>
+                                        <h3 className="font-bold text-lg text-blue-200 mb-3">Lotes del Producto</h3>
+                                        {loadingLotes ? (
+                                            <div className="flex items-center justify-center py-8">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                                <span className="ml-2 text-gray-300">Cargando lotes...</span>
+                                            </div>
+                                        ) : lotesData && lotesData.length > 0 ? (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                <div className="grid grid-cols-3 gap-4 border-b border-gray-600 pb-2 mb-2">
+                                                    <div className="text-gray-300 font-semibold">Lote</div>
+                                                    <div className="text-gray-300 font-semibold">Fecha Vto</div>
+                                                    <div className="text-gray-300 font-semibold">Cantidad</div>
+                                                </div>
+                                                {lotesData.map((lote, index) => (
+                                                    <div className="grid grid-cols-3 gap-4 py-1 hover:bg-gray-800 rounded px-2 transition-colors" key={index}>
+                                                        <div className="text-white">{lote.Lote}</div>
+                                                        <div className="text-white">{new Date(lote.ExpDate).toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('/').reverse().join('-')}</div>
+                                                        <div className={`font-semibold ${lote.Cantidad > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {lote.Cantidad}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-400">
+                                                No hay información de lotes disponible.
                                             </div>
                                         )}
                                     </div>
