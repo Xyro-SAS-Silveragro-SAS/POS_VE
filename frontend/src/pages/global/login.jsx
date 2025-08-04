@@ -23,13 +23,100 @@ const Login = () => {
     const [mensajeAleatorio, setMensajeAleatorio]   = useState("")
     const [datoAleatorio, setDatoAleatorio]         = useState("")
 
+    // Estados para PWA
+    const [deferredPrompt, setDeferredPrompt]       = useState(null)
+    const [showInstallButton, setShowInstallButton] = useState(false)
+    const [isAppInstalled, setIsAppInstalled]       = useState(false)
+
     const [dataLogin, setDataLogin] = useState({
         usuario: '',
         clave: '',
         bodega: ''
     })
 
-   
+    // Detectar si la app ya está instalada
+    const checkIfAppInstalled = () => {
+        // Método 1: Verificar si está en modo standalone (instalada)
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        
+        // Método 2: Verificar si está ejecutándose como PWA
+        const isRunningStandalone = window.navigator.standalone === true;
+        
+        // Método 3: Verificar user agent (para algunos navegadores)
+        const isInWebAppiOS = window.navigator.standalone;
+        
+        return isStandalone || isRunningStandalone || isInWebAppiOS;
+    }
+
+    // Configurar event listeners para PWA
+    useEffect(() => {
+        // Verificar si la app ya está instalada
+        setIsAppInstalled(checkIfAppInstalled());
+
+        // Event listener para el evento beforeinstallprompt
+        const handleBeforeInstallPrompt = (e) => {
+            console.log('beforeinstallprompt event fired');
+            // Prevenir que el navegador muestre su propio prompt
+            e.preventDefault();
+            // Guardar el evento para usarlo después
+            setDeferredPrompt(e);
+            // Mostrar nuestro botón de instalación
+            if (!checkIfAppInstalled()) {
+                setShowInstallButton(true);
+            }
+        };
+
+        // Event listener para cuando se instala la app
+        const handleAppInstalled = (e) => {
+            console.log('App installed successfully');
+            setShowInstallButton(false);
+            setIsAppInstalled(true);
+            setDeferredPrompt(null);
+            
+            // Mostrar mensaje de éxito
+            Funciones.alerta("¡Éxito!", "La aplicación se ha instalado correctamente", 'success');
+        };
+
+        // Agregar event listeners
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        // Cleanup
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    }, []);
+
+    // Función para manejar la instalación de la PWA
+    const handleInstallPWA = async () => {
+        if (!deferredPrompt) {
+            console.log('No hay prompt de instalación disponible');
+            return;
+        }
+
+        try {
+            // Mostrar el prompt de instalación
+            const result = await deferredPrompt.prompt();
+            console.log('Resultado del prompt:', result);
+
+            // Esperar a que el usuario responda al prompt
+            const choiceResult = await deferredPrompt.userChoice;
+            console.log('Elección del usuario:', choiceResult.outcome);
+
+            if (choiceResult.outcome === 'accepted') {
+                console.log('Usuario aceptó instalar la PWA');
+                setShowInstallButton(false);
+            } else {
+                console.log('Usuario rechazó instalar la PWA');
+            }
+
+            // Limpiar el prompt usado
+            setDeferredPrompt(null);
+        } catch (error) {
+            console.error('Error al intentar instalar la PWA:', error);
+        }
+    };
 
     //efecto para cargar usuarios de la api y guardarlos en la base de datos local
     useEffect(() => {
@@ -207,6 +294,33 @@ const Login = () => {
         <div className="w-[100%] h-dvh bg-[#546C4C] text-gray-600">
             <div className="m-auto py-[20%] px-[10%] w-full md:w-[80%] lg:w-[30%] lg:p-[5%]">
                 <img src={logo} alt="" className="mb-[10%] w-[60%] m-auto"/>
+
+                {/* Botón de instalación PWA */}
+                {showInstallButton && !isAppInstalled && (
+                    <div className="mb-6 p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-blue-600 mr-3">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                                <div>
+                                    <p className="text-sm font-medium text-blue-800">
+                                        ¡Instala la aplicación!
+                                    </p>
+                                    <p className="text-xs text-blue-600">
+                                        Accede más rápido desde tu dispositivo
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={handleInstallPWA}
+                                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                Instalar
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <blockquote className="text-center italic text-white/90 mb-8 border-l-4 border-red-500 pl-4 py-2">
                     {mensajeAleatorio}
