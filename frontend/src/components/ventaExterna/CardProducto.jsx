@@ -17,6 +17,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     const [dataTiendas, setDataTiendas]         = useState(null);
     const [loadingTiendas, setLoadingTiendas]   = useState(false)
     const [activeTab, setActiveTab]             = useState('info');
+    const [showLotesModal, setShowLotesModal]   = useState(false);
+    const [lotesData, setLotesData]             = useState([]);
+    const [loadingLotes, setLoadingLotes]       = useState(false);
     const { currentUser }                       = useAuth();
 
     useEffect(() => {
@@ -46,6 +49,28 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             fetchTiendas();
         }
     }, [showImageModal, producto.ItemCode]);
+
+    useEffect(() => {
+        if (showLotesModal) {
+            const fetchLotes = async () => {
+                try {
+                    setLoadingLotes(true);
+                    const response = await ApiSL.get(`lotes/artículo/${localStorage.getItem('bodega')}/${producto.ItemCode}`);
+                    if (response.Continuar === 1) {
+                        setLotesData(response.datos);
+                    } else {
+                        setLotesData([]);
+                    }
+                } catch (e) {
+                    console.log("Error fetching lotes:", e);
+                    setLotesData([]);
+                } finally {
+                    setLoadingLotes(false);
+                }
+            };
+            fetchLotes();
+        }
+    }, [showLotesModal, producto.ItemCode]);
 
     const handleChangePrecio = (item) => {
         Funciones.alertaBox("Ajuste de precio","Escriba el precio si desea cambiarlo","info", (valorCaja)=>{
@@ -198,6 +223,15 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                     </span>
                     <span className='text-md w-full mt-2'>
                         <strong className="mr-1">Stock:</strong> {producto.Cantidad }
+                    </span>
+
+                    <span className='text-md w-full mt-1'>
+                        <button
+                            onClick={() => setShowLotesModal(true)}
+                            className="text-blue-500 hover:text-blue-700 text-sm font-semibold underline"
+                        >
+                            Ver lotes
+                        </button>
                     </span>
 
                     <span className='text-md mt-2 w-full flex items-center' >
@@ -403,6 +437,59 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Lotes */}
+            {showLotesModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowLotesModal(false)}>
+                    <div className="relative w-full max-w-lg bg-white rounded-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        {/* Cabecera del Modal */}
+                        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-800">Lotes para {producto.Articulo}</h3>
+                            <button
+                                onClick={() => setShowLotesModal(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Contenido del Modal */}
+                        <div className="p-4 max-h-96 overflow-y-auto">
+                            {loadingLotes ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                    <span className="ml-2 text-gray-500">Cargando lotes...</span>
+                                </div>
+                            ) : lotesData && lotesData.length > 0 ? (
+                                <table className="w-full text-sm text-left text-gray-500">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3">Lote</th>
+                                            <th scope="col" className="px-6 py-3">Fecha de Vencimiento</th>
+                                            <th scope="col" className="px-6 py-3">Cantidad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {lotesData.map((lote, index) => (
+                                            <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                                                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{lote.Lote}</td>
+                                                <td className="px-6 py-4">{new Date(lote.ExpDate).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">{lote.Cantidad}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    No se encontraron lotes para este producto.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
