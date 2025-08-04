@@ -54,9 +54,9 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
             const fetchLotes = async () => {
                 try {
                     setLoadingLotes(true);
-                    const response = await ApiSL.get(`lotes/artículo/${localStorage.getItem('bodega')}/${producto.ItemCode}`);
-                    if (response.Continuar === 1) {
-                        setLotesData(response.datos);
+                    const response = await ApiSL.get(`/api/lotes/articulo/${localStorage.getItem('bodega')}/${producto.ItemCode}`);
+                    if (response.data.continuar === 1) {
+                        setLotesData(response.data.datos);
                     } else {
                         setLotesData([]);
                     }
@@ -455,7 +455,11 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                                                 {lotesData.map((lote, index) => (
                                                     <div className="grid grid-cols-3 gap-4 py-1 hover:bg-gray-800 rounded px-2 transition-colors" key={index}>
                                                         <div className="text-white">{lote.Lote}</div>
-                                                        <div className="text-white">{new Date(lote.ExpDate).toLocaleDateString()}</div>
+                                                        <div className="text-white">{new Date(lote.ExpDate).toLocaleDateString('es-CO', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('/').reverse().join('-')}</div>
                                                         <div className={`font-semibold ${lote.Cantidad > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                             {lote.Cantidad}
                                                         </div>
