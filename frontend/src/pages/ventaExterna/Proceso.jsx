@@ -452,8 +452,7 @@ const Proceso = () => {
 
     const abreModalDetallesEntrega = (valor) => {
         // Verificar si clienteSel tiene propiedades (es un objeto con datos)
-        const clienteSeleccionado = clienteSel && Object.keys(clienteSel).length > 0;
-        
+        const clienteSeleccionado = cabezaPedido.tx_nom_sn_nombre && cabezaPedido.tx_nom_sn_nombre !== '';        
         if(!clienteSeleccionado){
             Funciones.alerta("Atención","Debe seleccionar un cliente","info",()=>{})
         }
