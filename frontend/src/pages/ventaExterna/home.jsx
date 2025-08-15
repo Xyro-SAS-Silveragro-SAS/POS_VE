@@ -226,7 +226,7 @@ const Home = () => {
     console.log(pedido)
     if (pedido) {
        Funciones.alerta("Estado del pedido",pedido.mensaje,"info",async ()=>{
-         await db.cabeza.update(parseInt(idProceso), { sync: 1, DocEntry: pedido.doc_entry, DocNum:pedido.doc_num,in_estado:pedido.in_estado,tx_comentarios:pedido.tx_comentarios });
+         await db.cabeza.update(parseInt(idProceso), { sync: 1, DocEntry: pedido.DocEntry, DocNum:pedido.DocNum,in_estado:pedido.in_estado,tx_comentarios:pedido.tx_comentarios });
          actualizaProcesos()
        });
     }
@@ -340,7 +340,7 @@ const Home = () => {
                     <div className="flex items-center gap-2 mt-2">
                       {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
                     
-                      {[2, 3, 4, 5].includes(Number(pedido.in_estado)) && (
+                      {[1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) && (
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                           </svg>

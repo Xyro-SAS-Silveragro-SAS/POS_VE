@@ -4,7 +4,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { AudioLines } from "lucide-react"
 import Funciones from "../../helpers/Funciones";
 import { db } from "../../db/db";
-import { API_MTS } from "../../config/config";
+import { API_MTS, VERSION } from "../../config/config";
 import { Link } from "react-router";
 
 const TopBarProceso = ({titulo = '', toggleIA = null, listaCarrito = [], tipoProceso=null, idProceso=0, startTour=null, setShowDetallesEntrega=null, cabezaPedido=null }) => {
@@ -82,12 +82,13 @@ const TopBarProceso = ({titulo = '', toggleIA = null, listaCarrito = [], tipoPro
                             <path fillRule="evenodd" d="M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z" clipRule="evenodd" />
                         </svg>
                     </div>
-                    <div className="col-span-7 text-[14px] flex items-center font-bold uppercase tituloPedido">
+                    <div className="col-span-8 text-[14px] flex items-center font-bold uppercase tituloPedido">
                         {titulo}
                         <small className="px-2 ml-2 rounded-lg font-bold bg-gray-100 text-black">{bodHeader}</small>
+                        <small className="px-4 px-1">V{VERSION}</small>
                         {/* <small className="px-4 px-1 bg-green-700 rounded-lg font-bold ml-2">ONLINE</small> */}
                     </div>
-                    <div className="col-span-4 flex items-center justify-end">
+                    <div className="col-span-3 flex items-center justify-end">
 
                         {cabezaPedido && cabezaPedido.sync === 1 ? (
                             <>

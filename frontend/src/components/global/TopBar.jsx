@@ -2,6 +2,7 @@ import logo from "../../assets/img/logo.png"
 import { useState, useEffect } from "react"
 import ConnectionAlert from "./ConnectionAlert"
 import { useAuth } from "../../context/AuthContext"
+import {VERSION} from "../../config/config.jsx"
 const TopBar = ({ startTour= null, onUserClick=null }) => {
     const [online, setStatus]                                   = useState(navigator.onLine);
     const { currentUser }                                       = useAuth();
@@ -36,7 +37,7 @@ const TopBar = ({ startTour= null, onUserClick=null }) => {
                 <div className="w-full grid grid-cols-12 p-4 m-auto lg:w-[50%]">
                     <div className="col-span-6 lg:col-span-3 flex items-center">
                         <img src={logo} alt="" className="w-[50%]"/> <small className="px-2 ml-2 rounded-lg font-bold bg-gray-100 text-black">{bodHeader}</small>
-                        {/* <small className="px-4 px-1 bg-green-700 rounded-lg font-bold">ONLINE</small> */}
+                        <small className="px-4 px-1">V{VERSION}</small>
                     </div>
                     <div className="col-span-6 lg:col-span-9 justify-end flex items-center nombreUsuario">
                         
