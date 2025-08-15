@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import Login from './pages/global/login.jsx';
 import Home from './pages/ventaExterna/home.jsx';
-import ReloadPrompt from './components/reloadPrompt.jsx';
+import ReloadPrompt from './components/ReloadPrompt.jsx';
 import Proceso from './pages/ventaExterna/Proceso.jsx';
 import { ConnectionProvider } from './context/ConnectionContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
