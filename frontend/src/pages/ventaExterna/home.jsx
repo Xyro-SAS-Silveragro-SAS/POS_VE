@@ -13,13 +13,16 @@ import ModalProductos from "../../components/global/modal/ModalProductos";
 import Funciones from "../../helpers/Funciones";
 import api from "../../services/apiService";
 import { API_MTS } from "../../config/config";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 const Home = () => {
   const [titulo, setTitulo]                                             = useState('')
   const [botonActivo, setBotonActivo]                                   = useState('')
-  const [mostrarFiltro, setMostrarFiltro]                               = useState(false)
-  const [filtroSeleccionado, setFiltroSeleccionado]                     = useState('hoy')
   const navigate                                                        = useNavigate()
+  const [startDate, setStartDate] = useState(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState(endOfMonth(new Date()));
   const { isOnline }                                                    = useConnection()
   const { isAuthenticated, isLoading, currentUser, logout }             = useAuth()
   const [listaProcesos, setListaProcesos]                               = useState(null)
@@ -43,7 +46,7 @@ const Home = () => {
     setTitulo('Pedidos')
     setBotonActivo('pedidos')
     startTour()
-  },[])   
+  },[startTour])
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -84,18 +87,15 @@ const Home = () => {
   // Efecto para aplicar el filtro cuando cambian los procesos o el filtro seleccionado
   useEffect(() => {
     if (listaProcesos) {
-      const procesosFiltrados = filtrarProcesos(listaProcesos, filtroSeleccionado)
+      const procesosFiltrados = filtrarProcesos(listaProcesos, startDate, endDate)
       setProcesosFiltrados(procesosFiltrados)
     }
-  }, [listaProcesos, filtroSeleccionado])
+  }, [listaProcesos, startDate, endDate])
 
   // Función para filtrar procesos según el criterio seleccionado
-  const filtrarProcesos = (procesos, filtro) => {
+  const filtrarProcesos = (procesos, fechaInicio, fechaFin) => {
     setProcesosFiltrados([])
     if (!procesos || procesos.length === 0) return []
-
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
 
     return procesos.filter(proceso => {
       
@@ -104,46 +104,21 @@ const Home = () => {
       const fechaProceso = new Date(proceso.dt_fecha_reg)
       fechaProceso.setHours(0, 0, 0, 0)
 
-      switch (filtro) {
-        case 'Hoy': {
-          return fechaProceso.getTime() === hoy.getTime()
-        } 
-        case 'Ayer':{
-          const ayer = new Date(hoy)
-          ayer.setDate(hoy.getDate() - 1)
-          return fechaProceso.getTime() === ayer.getTime()
-        }
-        case 'Esta Semana':{
-          const inicioSemana = new Date(hoy)
-          const diaSemana = hoy.getDay()
-          const diasAtras = diaSemana === 0 ? 6 : diaSemana - 1 // Lunes como inicio
-          inicioSemana.setDate(hoy.getDate() - diasAtras)
-          
-          const finSemana = new Date(inicioSemana)
-          finSemana.setDate(inicioSemana.getDate() + 6)
-          
-          return fechaProceso >= inicioSemana && fechaProceso <= finSemana
-        }
-        case 'Este Mes':{
-          return fechaProceso.getMonth() === hoy.getMonth() && 
-                 fechaProceso.getFullYear() === hoy.getFullYear()
-        }
-        case 'mes_pasado':{
-          const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)
-          const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0)
-          return fechaProceso >= mesAnterior && fechaProceso <= finMesAnterior
-        }
-        case 'ultimos_30_dias':{
-          const hace30Dias = new Date(hoy)
-          hace30Dias.setDate(hoy.getDate() - 30)
-          return fechaProceso >= hace30Dias && fechaProceso <= hoy
-        }
-        case 'Todos':
-          return true
-          
-        default:
-          return true
+      const inicio = fechaInicio ? new Date(fechaInicio) : null;
+      if(inicio) inicio.setHours(0,0,0,0);
+
+      const fin = fechaFin ? new Date(fechaFin) : null;
+      if(fin) fin.setHours(23,59,59,999);
+
+      if (inicio && fin) {
+          return fechaProceso >= inicio && fechaProceso <= fin;
+      } else if (inicio) {
+          return fechaProceso >= inicio;
+      } else if (fin) {
+          return fechaProceso <= fin;
       }
+
+      return true
     })
   }
 
@@ -152,15 +127,6 @@ const Home = () => {
      const botonActivo = (tipo === 'pedido') ? 'pedidos' : 'cotizaciones'
      setBotonActivo(botonActivo)
      setTitulo(titulo)
-  }
-
-  const toggleFiltro = () => {
-    setMostrarFiltro(!mostrarFiltro)
-  }
-
-  const aplicarFiltro = (filtro) => {
-    setFiltroSeleccionado(filtro)
-    setMostrarFiltro(false)
   }
   
   const nuevoProceso = (id) => {
@@ -175,22 +141,6 @@ const Home = () => {
     logout()
     setMostrarModalUsuario(false)
   }
-
-  // Función para obtener el nombre del filtro en español
-  const getNombreFiltro = (filtro) => {
-    const nombres = {
-      'hoy': 'Hoy',
-      'ayer': 'Ayer',
-      'esta_semana': 'Esta semana',
-      'semana_pasada': 'Semana pasada',
-      'este_mes': 'Este mes',
-      'mes_pasado': 'Mes pasado',
-      'ultimos_30_dias': 'Últimos 30 días',
-      'todos': 'Todos'
-    }
-    return nombres[filtro] || filtro.charAt(0).toUpperCase() + filtro.slice(1)
-  }
-
 
   const toggleClientes = () => {
       setShowClientes(!showClientes);
@@ -252,27 +202,21 @@ const Home = () => {
             <h1 className="text-2xl font-bold flex items-center">
               {titulo}
             </h1>
-            {/* Filtro */}
             <div className="relative flex items-center">
-                <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm mr-4 filtrosActual">
-                  Filtro: {getNombreFiltro(filtroSeleccionado)}
-                </span>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 24" 
-                fill="currentColor" 
-                className="size-6 cursor-pointer selFiltro"
-                onClick={toggleFiltro}
-              >
-                <path d="M18.75 12.75h1.5a.75.75 0 0 0 0-1.5h-1.5a.75.75 0 0 0 0 1.5ZM12 6a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 12 6ZM12 18a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 12 18ZM3.75 6.75h1.5a.75.75 0 1 0 0-1.5h-1.5a.75.75 0 0 0 0 1.5ZM5.25 18.75h-1.5a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 0 1.5ZM3 12a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 3 12ZM9 3.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5ZM12.75 12a2.25 2.25 0 1 1 4.5 0 2.25 2.25 0 0 1-4.5 0ZM9 15.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
-              </svg>
-
-              
-              
-              {/* Menú desplegable de filtros */}
-              {mostrarFiltro && (
-                <Filtro aplicarFiltro={aplicarFiltro} filtroSeleccionado={filtroSeleccionado}/>
-              )}
+                <DatePicker
+                    selected={startDate}
+                    onChange={(dates) => {
+                        const [start, end] = dates;
+                        setStartDate(start);
+                        setEndDate(end);
+                    }}
+                    startDate={startDate}
+                    endDate={endDate}
+                    selectsRange
+                    isClearable={true}
+                    dateFormat="dd/MM/yyyy"
+                    className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm mr-4"
+                />
             </div>
           </div>
 
@@ -368,10 +312,7 @@ const Home = () => {
                       No hay {titulo.toLowerCase()} para mostrar
                   </h3>
                   <p className="text-gray-500 text-center p-8">
-                      {filtroSeleccionado === 'hoy' 
-                        ? `Aún no has agregado ${titulo.toLowerCase()} hoy. Para empezar presiona el botón rojo que está en la parte inferior derecha de la pantalla`
-                        : `No hay ${titulo.toLowerCase()} en el período seleccionado (${getNombreFiltro(filtroSeleccionado)}). Prueba con otro filtro o agrega nuevos ${titulo.toLowerCase()}.`
-                      }
+                      No hay busquedas para el filtro seleccionado
                   </p>
               </div>
           )}
