@@ -545,17 +545,6 @@ const Proceso = () => {
                     <div className="w-full px-[5%] lg:px-[3%] mb-4 font-bold">
                         <div className="w-full flex items-center justify-between text-gray-500">
                             <small>CLIENTE</small>
-                            {cabezaPedido && cabezaPedido.observaciones && cabezaPedido.observaciones !== '' && (
-                                <svg
-                                    onClick={() => Funciones.alerta("Observaciones del Pedido", cabezaPedido.observaciones, "info")}
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="size-6 cursor-pointer text-blue-500"
-                                >
-                                    <path fillRule="evenodd" d="M4.848 2.771A49.144 49.144 0 0 1 12 2.25c2.43 0 4.817.178 7.152.52 1.978.292 3.348 2.024 3.348 3.97v6.02c0 1.946-1.37 3.678-3.348 3.97a48.901 48.901 0 0 1-14.304 0c-1.978-.292-3.348-2.024-3.348-3.97V6.741c0-1.946 1.37-3.678 3.348-3.97Z" clipRule="evenodd" />
-                                </svg>
-                            )}
                         </div>
                         <div className="flex items-center justify-between clienteSeleccionado">
                             {
