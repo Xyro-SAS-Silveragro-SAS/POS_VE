@@ -55,6 +55,23 @@ const Home = () => {
   }, [isLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
+    const loginDate = localStorage.getItem('loginDate');
+    const today = new Date().toISOString().split('T')[0];
+
+    if (loginDate && loginDate < today) {
+      Funciones.alerta(
+        "Sesión Expirada",
+        "Tu sesión ha expirado porque ha cambiado el día. Por favor, inicia sesión de nuevo.",
+        "info",
+        () => {
+          logout();
+          navigate('/login');
+        }
+      );
+    }
+  }, [navigate, logout]);
+
+  useEffect(() => {
     const getListaProcesos = async () => {
       const lista = await db.cabeza.where('in_tipo')
                                    .equals(botonActivo.toLowerCase())

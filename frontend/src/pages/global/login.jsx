@@ -255,6 +255,10 @@ const Login = () => {
         console.log(result)
 
         if (result.success) {
+            // Guardar la fecha de inicio de sesión en localStorage
+            const today = new Date().toISOString().split('T')[0];
+            localStorage.setItem('loginDate', today);
+
             //consulto las tablas restantes solo si hay internet
             if(isOnline){
                 setLoading(true);
