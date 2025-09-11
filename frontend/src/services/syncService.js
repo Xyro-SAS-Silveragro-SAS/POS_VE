@@ -19,10 +19,13 @@ class SyncService {
       // Get clients from API
       const clientes = await api.get(`api/clientes/vexterna/codigo/${cdSap}`);
       
-      if (clientes.datos && clientes.datos.length > 0) {
+      if (clientes && clientes.datos && clientes.datos.length > 0) {
         // Clear existing clients and add new ones
         await db.table('clientes').clear();
         await db.clientes.bulkAdd(clientes.datos);
+        console.log(`Sincronizados ${clientes.datos.length} clientes`);
+      } else {
+        console.warn("No se encontraron clientes para sincronizar");
       }
       
       if (setLoading) setLoading(false);
@@ -30,7 +33,17 @@ class SyncService {
     } catch (error) {
       console.error("Error al sincronizar clientes:", error);
       if (setLoading) setLoading(false);
-      return false;
+      
+      // Check if it's a network error or API error
+      if (error.name === 'NetworkError' || !navigator.onLine) {
+        throw new Error("Error de conexión a internet");
+      } else if (error.response && error.response.status === 404) {
+        throw new Error("Usuario no encontrado en el sistema");
+      } else if (error.response && error.response.status >= 500) {
+        throw new Error("Error del servidor, intente más tarde");
+      } else {
+        throw new Error("Error al sincronizar clientes");
+      }
     }
   }
 
@@ -47,10 +60,13 @@ class SyncService {
       // Get items from API
       const items = await api.get(`api/inventario/bodega/${bodega}`);
       
-      if (items.datos && items.datos.length > 0) {
+      if (items && items.datos && items.datos.length > 0) {
         // Clear existing items and add new ones
         await db.table('items').clear();
         await db.items.bulkAdd(items.datos);
+        console.log(`Sincronizados ${items.datos.length} productos`);
+      } else {
+        console.warn("No se encontraron productos para sincronizar");
       }
       
       if (setLoading) setLoading(false);
@@ -58,7 +74,17 @@ class SyncService {
     } catch (error) {
       console.error("Error al sincronizar productos:", error);
       if (setLoading) setLoading(false);
-      return false;
+      
+      // Check if it's a network error or API error
+      if (error.name === 'NetworkError' || !navigator.onLine) {
+        throw new Error("Error de conexión a internet");
+      } else if (error.response && error.response.status === 404) {
+        throw new Error("Bodega no encontrada en el sistema");
+      } else if (error.response && error.response.status >= 500) {
+        throw new Error("Error del servidor, intente más tarde");
+      } else {
+        throw new Error("Error al sincronizar productos");
+      }
     }
   }
 

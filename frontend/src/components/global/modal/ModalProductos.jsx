@@ -43,21 +43,27 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
             return;
         }
 
+        if (syncing) {
+            return; // Prevent multiple simultaneous sync operations
+        }
+
         const bodega = syncService.getWarehouseCode();
         if (!bodega) {
             Funciones.alerta("Error", "No se pudo obtener la información de la bodega", "error");
             return;
         }
 
-        const success = await syncService.syncItems(bodega, setSyncing);
-        if (success) {
-            Funciones.alerta("Éxito", "Productos sincronizados correctamente", "success");
-            // Refresh the current search results if there's a search term
-            if (busqueda) {
-                consultaProductos();
+        try {
+            const success = await syncService.syncItems(bodega, setSyncing);
+            if (success) {
+                Funciones.alerta("Éxito", "Productos sincronizados correctamente", "success");
+                // Refresh the current search results if there's a search term
+                if (busqueda) {
+                    consultaProductos();
+                }
             }
-        } else {
-            Funciones.alerta("Error", "No se pudieron sincronizar los productos", "error");
+        } catch (error) {
+            Funciones.alerta("Error", error.message || "No se pudieron sincronizar los productos", "error");
         }
     }
 
@@ -90,9 +96,21 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
                                     </div>
                                 ) : (
                                     <Download 
-                                        onClick={handleSyncProductos} 
-                                        className="size-6 cursor-pointer hover:scale-110 transition-transform" 
-                                        title="Sincronizar productos"
+                                        onClick={isOnline && !syncing ? handleSyncProductos : undefined} 
+                                        className={`size-6 transition-all duration-200 ${
+                                            isOnline && !syncing 
+                                                ? 'cursor-pointer hover:scale-110 text-white' 
+                                                : 'cursor-not-allowed text-gray-400 opacity-50'
+                                        }`}
+                                        title={
+                                            !isOnline 
+                                                ? "Sin conexión a internet" 
+                                                : syncing 
+                                                    ? "Sincronizando..." 
+                                                    : "Sincronizar productos"
+                                        }
+                                        aria-label="Sincronizar productos"
+                                        aria-disabled={!isOnline || syncing}
                                     />
                                 )}
                             </div>

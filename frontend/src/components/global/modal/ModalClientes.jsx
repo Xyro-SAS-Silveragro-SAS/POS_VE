@@ -45,21 +45,27 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
           return;
         }
 
+        if (syncing) {
+          return; // Prevent multiple simultaneous sync operations
+        }
+
         const cdSap = syncService.getUserSapCode();
         if (!cdSap) {
           Funciones.alerta("Error", "No se pudo obtener la información del usuario", "error");
           return;
         }
 
-        const success = await syncService.syncClientes(cdSap, setSyncing);
-        if (success) {
-          Funciones.alerta("Éxito", "Clientes sincronizados correctamente", "success");
-          // Refresh the current search results if there's a search term
-          if (busqueda) {
-            consultaClientes();
+        try {
+          const success = await syncService.syncClientes(cdSap, setSyncing);
+          if (success) {
+            Funciones.alerta("Éxito", "Clientes sincronizados correctamente", "success");
+            // Refresh the current search results if there's a search term
+            if (busqueda) {
+              consultaClientes();
+            }
           }
-        } else {
-          Funciones.alerta("Error", "No se pudieron sincronizar los clientes", "error");
+        } catch (error) {
+          Funciones.alerta("Error", error.message || "No se pudieron sincronizar los clientes", "error");
         }
       }
     
@@ -93,9 +99,21 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                                     </div>
                                 ) : (
                                     <Download 
-                                        onClick={handleSyncClientes} 
-                                        className="size-6 cursor-pointer hover:scale-110 transition-transform" 
-                                        title="Sincronizar clientes"
+                                        onClick={isOnline && !syncing ? handleSyncClientes : undefined} 
+                                        className={`size-6 transition-all duration-200 ${
+                                            isOnline && !syncing 
+                                                ? 'cursor-pointer hover:scale-110 text-white' 
+                                                : 'cursor-not-allowed text-gray-400 opacity-50'
+                                        }`}
+                                        title={
+                                            !isOnline 
+                                                ? "Sin conexión a internet" 
+                                                : syncing 
+                                                    ? "Sincronizando..." 
+                                                    : "Sincronizar clientes"
+                                        }
+                                        aria-label="Sincronizar clientes"
+                                        aria-disabled={!isOnline || syncing}
                                     />
                                 )}
                             </div>
