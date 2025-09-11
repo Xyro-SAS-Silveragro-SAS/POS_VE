@@ -74,7 +74,14 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
                     <div className="fixed bg-[#546C4C] w-full text-white z-1 top-0">
                         <div className="w-full grid grid-cols-12 p-5 m-auto lg:w-[50%] items-center">
                             <div className="text-center">
-                                <svg onClick={toggleProductos} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6 cursor-pointer">
+                                <svg 
+                                    onClick={syncing ? undefined : toggleProductos} 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    viewBox="0 0 24 24" 
+                                    fill="currentColor" 
+                                    className={`size-6 ${syncing ? 'cursor-not-allowed text-gray-400 opacity-50' : 'cursor-pointer'}`}
+                                    title={syncing ? "Sincronizando... Por favor espere" : "Volver"}
+                                >
                                     <path fillRule="evenodd" d="M11.03 3.97a.75.75 0 0 1 0 1.06l-6.22 6.22H21a.75.75 0 0 1 0 1.5H4.81l6.22 6.22a.75.75 0 1 1-1.06 1.06l-7.5-7.5a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
                                 </svg>
                             </div>
@@ -134,6 +141,24 @@ const ModalProductos = ({showProductos = false, toggleProductos = null, handleAd
 
                     </div>
                     
+                    {/* Blocking Overlay during sync */}
+                    {syncing && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center">
+                            <div className="bg-white rounded-lg p-8 mx-4 max-w-sm w-full text-center shadow-2xl">
+                                <div className="animate-spin mx-auto mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-12 text-[#546C4C]">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                    Sincronizando productos...
+                                </h3>
+                                <p className="text-gray-600">
+                                    Por favor espere mientras se actualizan los datos. No cierre esta ventana.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </>
