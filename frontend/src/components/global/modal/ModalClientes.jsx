@@ -1,13 +1,16 @@
 import { useState } from "react"
 import { db } from "../../../db/db"
-import { TextCursorInput, Download } from "lucide-react"
+import { TextCursorInput, Download, MapPin } from "lucide-react"
 import { useConnection } from "../../../context/ConnectionContext"
 import syncService from "../../../services/syncService.js"
 import Funciones from "../../../helpers/Funciones"
+import ModalDestinos from "./ModalDestinos"
 const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteSel = null, onlyView=false}) => {
     const [busqueda, setBusqueda] = useState('')
     const [clientes, setClientes] = useState([])
     const [syncing, setSyncing] = useState(false)
+    const [showDestinos, setShowDestinos] = useState(false)
+    const [clienteDestinosSeleccionado, setClienteDestinosSeleccionado] = useState(null)
     const { isOnline } = useConnection()
 
       const consultaClientes = () => {
@@ -66,6 +69,18 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
           }
         } catch (error) {
           Funciones.alerta("Error", error.message || "No se pudieron sincronizar los clientes", "error");
+        }
+      }
+
+      const handleVerDestinos = (cliente) => {
+        setClienteDestinosSeleccionado(cliente);
+        setShowDestinos(true);
+      }
+
+      const toggleDestinos = () => {
+        setShowDestinos(!showDestinos);
+        if (!showDestinos) {
+          setClienteDestinosSeleccionado(null);
         }
       }
     
@@ -142,23 +157,39 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                             <>
                                 {clientes && clientes.length > 0 && clientes.map((item, index) => (
                                     <div key={index} className="items-center w-full grid grid-cols-12 border-b-1 border-gray-300">
-                                        <div  className="col-span-2 font-medium flex justify-center">
+                                        <div  className="col-span-1 font-medium flex justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
                                                 <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
                                             </svg>
                                         </div>
-                                        <div className="col-span-8 py-4 flex flex-wrap font-medium ">
+                                        <div className="col-span-7 py-4 flex flex-wrap font-medium ">
                                             <p className="w-full">
                                                 {item.Nombre}
                                             </p>
                                             <small className="w-full">{item.Codigo}</small>
                                             <small className="w-full">Saldo: ${item.Saldo}</small>
                                         </div>
-                                        <div className="col-span-2 flex items-center justify-center">
+                                        <div className="col-span-4 flex items-center justify-center space-x-2">
+                                            {/* Botón para ver destinos */}
+                                            <button
+                                                onClick={() => handleVerDestinos(item)}
+                                                className="flex items-center justify-center w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors duration-200"
+                                                title="Ver destinos"
+                                            >
+                                                <MapPin className="size-5" />
+                                            </button>
+                                            
+                                            {/* Botón para seleccionar cliente */}
                                             {onlyView === false && (
-                                                <svg onClick={()=>{handleSetCliente(item)}} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer">
-                                                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
-                                                </svg>
+                                                <button
+                                                    onClick={() => handleSetCliente(item)}
+                                                    className="flex items-center justify-center w-10 h-10 bg-[#546C4C] hover:bg-[#456340] text-white rounded-full transition-colors duration-200"
+                                                    title="Seleccionar cliente"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
+                                                        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clipRule="evenodd" />
+                                                    </svg>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -183,7 +214,7 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                         <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center">
                             <div className="bg-white rounded-lg p-8 mx-4 max-w-sm w-full text-center shadow-2xl">
                                 <div className="animate-spin mx-auto mb-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-12 text-[#546C4C]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-12 text-[#546C4C] animate-spin m-auto">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                     </svg>
                                 </div>
@@ -198,6 +229,13 @@ const ModalClientes = ({showClientes = false, toggleClientes = null, setClienteS
                     )}
                 </div>
             </div>
+
+            {/* Modal de destinos */}
+            <ModalDestinos 
+                showDestinos={showDestinos} 
+                toggleDestinos={toggleDestinos} 
+                clienteSeleccionado={clienteDestinosSeleccionado} 
+            />
         </>
     )
 }
