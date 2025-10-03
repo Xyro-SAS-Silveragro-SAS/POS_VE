@@ -171,14 +171,50 @@ const Home = () => {
   };
 
   const verificaEstado = async (id_consec, idProceso) => { 
-
-    const pedido = await api.get('api/pedidos/uuid/'+id_consec)
-    console.log(pedido)
-    if (pedido) {
-       Funciones.alerta("Estado del pedido",pedido.mensaje,"info",async ()=>{
-         await db.cabeza.update(parseInt(idProceso), { sync: 1, DocEntry: pedido.DocEntry, DocNum:pedido.DocNum,in_estado:pedido.in_estado,tx_comentarios:pedido.tx_comentarios });
-         actualizaProcesos()
-       });
+    try {
+      const pedido = await api.get('api/pedidos/uuid/' + id_consec);
+      console.log(pedido);
+      
+      // Verifica si la respuesta es válida y contiene los datos necesarios
+      if (
+        pedido &&
+        typeof pedido === 'object' &&
+        pedido.mensaje &&
+        pedido.DocEntry !== undefined &&
+        pedido.DocNum !== undefined &&
+        pedido.in_estado !== undefined
+      ) {
+        Funciones.alerta(
+          "Estado del pedido",
+          pedido.mensaje,
+          "info",
+          async () => {
+            await db.cabeza.update(parseInt(idProceso), {
+              sync: 1,
+              DocEntry: pedido.DocEntry,
+              DocNum: pedido.DocNum,
+              in_estado: pedido.in_estado,
+              tx_comentarios: pedido.tx_comentarios
+            });
+            actualizaProcesos();
+          }
+        );
+      } else {
+        // Si no hay datos válidos, muestra alerta y no actualiza
+        Funciones.alerta(
+          "Error de actualización",
+          "No se pudo actualizar el estado porque el servidor presentó una falla o no respondió correctamente.",
+          "error"
+        );
+      }
+    } catch (error) {
+      // Si ocurre un error en la petición, muestra alerta
+      console.error('Error al verificar estado:', error);
+      Funciones.alerta(
+        "Error de conexión",
+        "No se pudo actualizar el estado porque el servidor presentó una falla o no respondió.",
+        "error"
+      );
     }
   }
 
@@ -284,7 +320,7 @@ const Home = () => {
                     <div className="flex items-center gap-2 mt-2">
                       {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
                     
-                      {[1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) && (
+                      {([1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) || pedido.in_estado === undefined || pedido.in_estado === null) && (
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                           </svg>
