@@ -290,13 +290,13 @@ const Home = () => {
                     )}
 
                     {pedido && pedido.sync === 1 && pedido.in_tipo ==='cotizaciones' && (
-                          <Link to={`${API_MTS}api/cotizacion/pdf/${pedido.id_consec}`} target="_blank" className="absolute right-[35%] bottom-0 flex">
+                          <a href={`${API_MTS}api/cotizacion/pdf/${pedido.id_consec}`} download={`cotizacion_${pedido.id_consec}.pdf`} className="absolute right-[35%] bottom-0 flex">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" className="size-5 ml-4">
                                   <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 144-208 0c-35.3 0-64 28.7-64 64l0 144-48 0c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128zM176 352l32 0c30.9 0 56 25.1 56 56s-25.1 56-56 56l-16 0 0 32c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-48 0-80c0-8.8 7.2-16 16-16zm32 80c13.3 0 24-10.7 24-24s-10.7-24-24-24l-16 0 0 48 16 0zm96-80l32 0c26.5 0 48 21.5 48 48l0 64c0 26.5-21.5 48-48 48l-32 0c-8.8 0-16-7.2-16-16l0-128c0-8.8 7.2-16 16-16zm32 128c8.8 0 16-7.2 16-16l0-64c0-8.8-7.2-16-16-16l-16 0 0 96 16 0zm80-112c0-8.8 7.2-16 16-16l48 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 32 32 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-32 0 0 48c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-64 0-64z"/>
                               </svg>
                              
 
-                          </Link>
+                          </a>
                       )}
                   </div>
                   <div className="col-span-9 lg:col-span-10 relative">
@@ -317,17 +317,17 @@ const Home = () => {
                       <small className=" bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg mr-2">SINCRONIZADO</small>
                     )}
                     
-                    <div className="flex items-center gap-2 mt-2">
-                      {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
-                    
-                      {([1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) || pedido.in_estado === undefined || pedido.in_estado === null) && (
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                      )}
-
+                    {pedido && pedido.in_tipo === 'pedidos' && (
+                      <div className="flex items-center gap-2 mt-2">
+                        {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
                       
-                    </div>
+                        {([1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) || pedido.in_estado === undefined || pedido.in_estado === null) && (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                        )}
+                      </div>
+                    )}
 
                   </div>
                   <div className="col-span-1 flex justify-end items-center">

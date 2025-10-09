@@ -38,6 +38,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                     fechaEntrega: formData.fechaEntrega,
                     tipoEnvio: formData.tipoEnvio,
                     observaciones: formData.observaciones,
+                    dt_fecha_reg: new Date().toISOString(),
                 }
                 //actualizo la data de los detalles finales
                 await db.cabeza.update(parseInt(idProceso), dataGuardar);
@@ -85,6 +86,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                     fechaEntrega: formData.fechaEntrega,
                     tipoEnvio: formData.tipoEnvio,
                     observaciones: formData.observaciones,
+                    dt_fecha_reg: new Date().toISOString(),
                 }
                 
                 //actualizo la data de los detalles finales
