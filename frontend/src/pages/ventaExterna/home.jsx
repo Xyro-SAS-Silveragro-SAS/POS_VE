@@ -300,14 +300,16 @@ const Home = () => {
                       )}
                   </div>
                   <div className="col-span-9 lg:col-span-10 relative">
-                    <strong>Codigo {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec.toUpperCase() ? String(pedido.id_consec.toUpperCase()).slice(-5) : ''}<br/>
+                    <strong>Código {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec.toUpperCase() ? String(pedido.id_consec.toUpperCase()).slice(-5) : ''}<br/>
                     <strong>Cliente: </strong> {pedido.tx_nom_sn_nombre !== '' ? pedido.tx_nom_sn_nombre : 'Sin Cliente'}<br/>
 
                     { pedido && pedido.in_tipo === 'pedidos' && (
                       <>
-                        <strong>Codigo SAP: </strong> { pedido.DocNum !== '' ? pedido.DocNum : 'Sin Código' }<br/>
+                        <strong>Código SAP: </strong> { pedido.DocNum !== '' ? pedido.DocNum : 'Sin Código' }<br/>
                       </>
                     )}
+
+                    <strong>Bodega: </strong> { pedido.tx_cod_alm_pos !== '' ? pedido.tx_cod_alm_pos : 'Sin Bodega' }<br/>
 
                     <strong>Fecha: </strong> { pedido.dt_fecha_reg ? new Date(pedido.dt_fecha_reg).toLocaleDateString() : 'N/A'}<br/>
                     <strong>Valor: </strong> ${ pedido.in_vlr_total ? pedido.in_vlr_total.toLocaleString('es-CO') : 'N/A'}<br/>

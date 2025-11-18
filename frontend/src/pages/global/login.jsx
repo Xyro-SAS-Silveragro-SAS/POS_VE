@@ -1,4 +1,4 @@
-import { VERSION, API_MTS, TOKEN, USER_TOKEN } from "../../config/config"
+import { VERSION} from "../../config/config"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import api from "../../services/apiService"
@@ -10,7 +10,6 @@ import Funciones from "../../helpers/Funciones"
 import logo from "../../assets/img/logo.png"
 import xyro from "../../assets/img/xyro.png"
 import Mensajes from "../../data/Mensajes"
-import datosInteresantes from "../../data/Interesantes"
 import PreloaderLogin from "../../components/global/PreloaderLogin"
 
 const Login = () => {
@@ -18,10 +17,9 @@ const Login = () => {
     const [cargando, setCargando]                   = useState(true)
     const navigate                                  = useNavigate()
     const { isOnline }                              = useConnection()
-    const { login, isAuthenticated, isLoading }     = useAuth()
+    const { login, isLoading }                      = useAuth()
     const [almacenes, setAlmacenes]                 = useState([])
     const [mensajeAleatorio, setMensajeAleatorio]   = useState("")
-    const [datoAleatorio, setDatoAleatorio]         = useState("")
 
     // Estados para PWA
     const [deferredPrompt, setDeferredPrompt]       = useState(null)
@@ -55,7 +53,6 @@ const Login = () => {
 
         // Event listener para el evento beforeinstallprompt
         const handleBeforeInstallPrompt = (e) => {
-            console.log('beforeinstallprompt event fired');
             // Prevenir que el navegador muestre su propio prompt
             e.preventDefault();
             // Guardar el evento para usarlo después
@@ -67,8 +64,7 @@ const Login = () => {
         };
 
         // Event listener para cuando se instala la app
-        const handleAppInstalled = (e) => {
-            console.log('App installed successfully');
+        const handleAppInstalled = () => {
             setShowInstallButton(false);
             setIsAppInstalled(true);
             setDeferredPrompt(null);
@@ -136,20 +132,30 @@ const Login = () => {
         const indiceAleatorio = Math.floor(Math.random() * Mensajes.length);
         setMensajeAleatorio(Mensajes[indiceAleatorio]);
 
-    }, []) 
+    }, [isOnline]) 
 
     const getAlmacenesNube = async () => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los almacenes
-          const almacenes = await api.get('api/bodegas')
-          if (almacenes.datos && almacenes.datos.length > 0) {
-                // Almacenar los usuarios en la base de datos local
-                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+          // Consultar la API para obtener los almacenes con timeout
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
+          
+          const almacenes = await api.get('api/bodegas', { signal: controller.signal })
+          clearTimeout(timeoutId)
+          
+          if (almacenes && almacenes.datos && almacenes.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('almacenes').clear()
                 // Si el usuario tiene bodegas, las guardamos como parte del objeto
                 await db.almacenes.bulkAdd(almacenes.datos)
                 //pongo los almacenes de la db
+                await db.almacenes.toArray().then((almacenes) => {
+                    setAlmacenes(almacenes)
+                })
+            } else {
+                // Si no hay datos válidos, cargar desde base de datos local
+                console.warn("No se recibieron datos válidos de almacenes, cargando desde BD local")
                 await db.almacenes.toArray().then((almacenes) => {
                     setAlmacenes(almacenes)
                 })
@@ -158,25 +164,56 @@ const Login = () => {
         }
         catch (error) {
             console.error("Error al cargar almacenes:", error)
+            // En caso de error, cargar datos desde la base de datos local
+            try {
+                await db.almacenes.toArray().then((almacenes) => {
+                    setAlmacenes(almacenes)
+                    if (almacenes.length === 0) {
+                        Funciones.alerta("Advertencia", "No hay almacenes disponibles. Verifique su conexión a internet.", 'warning')
+                    }
+                })
+            } catch (dbError) {
+                console.error("Error al cargar almacenes desde BD local:", dbError)
+                Funciones.alerta("Error", "No se pudieron cargar los almacenes", 'error')
+            }
             setCargando(false)
         }
     }
     const getClientes = async (cdSap) => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los almacenes
-          const clientes = await api.get('api/clientes/vexterna/codigo/'+cdSap)
-          if (clientes.datos && clientes.datos.length > 0) {
-                // Almacenar los usuarios en la base de datos local
-                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+          // Consultar la API para obtener los clientes con timeout
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 segundos timeout
+          
+          const clientes = await api.get('api/clientes/vexterna/codigo/'+cdSap, { signal: controller.signal })
+          clearTimeout(timeoutId)
+          
+          if (clientes && clientes.datos && clientes.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('clientes').clear()
-                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                // Si el usuario tiene clientes, los guardamos
                 await db.clientes.bulkAdd(clientes.datos)
+                console.log(`Clientes actualizados: ${clientes.datos.length} registros`)
+            } else {
+                console.warn("No se recibieron datos válidos de clientes o la respuesta está vacía")
+                // No limpiamos la tabla si no tenemos datos válidos
             }
             setCargando(false)
         }
         catch (error) {
             console.error("Error al cargar clientes:", error)
+            // En caso de error de red o timeout, no limpiar los datos existentes
+            try {
+                const clientesExistentes = await db.clientes.count()
+                if (clientesExistentes === 0) {
+                    console.warn("No hay clientes en la base de datos local")
+                } else {
+                    console.log(`Manteniendo ${clientesExistentes} clientes existentes en BD local`)
+                }
+            } catch (dbError) {
+                console.error("Error al verificar clientes en BD local:", dbError)
+            }
             setCargando(false)
         }
     }
@@ -184,19 +221,38 @@ const Login = () => {
     const getItems = async (bodega) => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los almacenes
-          const items = await api.get('api/inventario/bodega/'+bodega)
-          if (items.datos && items.datos.length > 0) {
-                // Almacenar los usuarios en la base de datos local
-                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+          // Consultar la API para obtener los items con timeout
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 segundos timeout para items (puede ser más pesado)
+          
+          const items = await api.get('api/inventario/bodega/'+bodega, { signal: controller.signal })
+          clearTimeout(timeoutId)
+          
+          if (items && items.datos && items.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('items').clear()
-                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                // Si el usuario tiene items, los guardamos
                 await db.items.bulkAdd(items.datos)
+                console.log(`Items actualizados: ${items.datos.length} registros`)
+            } else {
+                console.warn("No se recibieron datos válidos de items o la respuesta está vacía")
+                // No limpiamos la tabla si no tenemos datos válidos
             }
             setCargando(false)
         }
         catch (error) {
-            console.error("Error al cargar clientes:", error)
+            console.error("Error al cargar items:", error)
+            // En caso de error de red o timeout, no limpiar los datos existentes
+            try {
+                const itemsExistentes = await db.items.count()
+                if (itemsExistentes === 0) {
+                    console.warn("No hay items en la base de datos local")
+                } else {
+                    console.log(`Manteniendo ${itemsExistentes} items existentes en BD local`)
+                }
+            } catch (dbError) {
+                console.error("Error al verificar items en BD local:", dbError)
+            }
             setCargando(false)
         }
     }
@@ -204,19 +260,38 @@ const Login = () => {
     const getDestinos = async () => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los almacenes
-          const destinos = await api.get('api/clientes/destinos')
-          if (destinos.datos && destinos.datos.length > 0) {
-                // Almacenar los usuarios en la base de datos local
-                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+          // Consultar la API para obtener los destinos con timeout
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 segundos timeout
+          
+          const destinos = await api.get('api/clientes/destinos', { signal: controller.signal })
+          clearTimeout(timeoutId)
+          
+          if (destinos && destinos.datos && destinos.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('destinos').clear()
-                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                // Si el usuario tiene destinos, los guardamos
                 await db.destinos.bulkAdd(destinos.datos)
+                console.log(`Destinos actualizados: ${destinos.datos.length} registros`)
+            } else {
+                console.warn("No se recibieron datos válidos de destinos o la respuesta está vacía")
+                // No limpiamos la tabla si no tenemos datos válidos
             }
             setCargando(false)
         }
         catch (error) {
-            console.error("Error al cargar clientes:", error)
+            console.error("Error al cargar destinos:", error)
+            // En caso de error de red o timeout, no limpiar los datos existentes
+            try {
+                const destinosExistentes = await db.destinos.count()
+                if (destinosExistentes === 0) {
+                    console.warn("No hay destinos en la base de datos local")
+                } else {
+                    console.log(`Manteniendo ${destinosExistentes} destinos existentes en BD local`)
+                }
+            } catch (dbError) {
+                console.error("Error al verificar destinos en BD local:", dbError)
+            }
             setCargando(false)
         }
     }
@@ -224,19 +299,37 @@ const Login = () => {
     const cargarUsuariosNube = async () => {
         try {
             setCargando(true)
-            // Consultar la API para obtener los usuarios
-            const usuarios = await api.get('api/usuarios/vexterna')
-            if (usuarios.datos && usuarios.datos.length > 0) {
-                // Almacenar los usuarios en la base de datos local
-                // Borro la data de los usuarios para volverla a cargar con lo que venga en el api
+            // Consultar la API para obtener los usuarios con timeout
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos timeout
+            
+            const usuarios = await api.get('api/usuarios/vexterna', { signal: controller.signal })
+            clearTimeout(timeoutId)
+            
+            if (usuarios && usuarios.datos && usuarios.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('usuarios').clear()
-                // Si el usuario tiene bodegas, las guardamos como parte del objeto
+                // Si el usuario tiene usuarios, los guardamos
                 await db.usuarios.bulkAdd(usuarios.datos)
+                console.log(`Usuarios actualizados: ${usuarios.datos.length} registros`)
+            } else {
+                console.warn("No se recibieron datos válidos de usuarios, manteniendo datos locales")
             }
             setCargando(false)
 
         } catch (error) {
             console.error("Error al cargar usuarios:", error)
+            // En caso de error, verificar si hay usuarios en BD local
+            try {
+                const usuariosExistentes = await db.usuarios.count()
+                if (usuariosExistentes === 0) {
+                    Funciones.alerta("Advertencia", "No hay usuarios disponibles. Verifique su conexión a internet.", 'warning')
+                } else {
+                    console.log(`Manteniendo ${usuariosExistentes} usuarios existentes en BD local`)
+                }
+            } catch (dbError) {
+                console.error("Error al verificar usuarios en BD local:", dbError)
+            }
             setCargando(false)
         }
     }
@@ -258,9 +351,6 @@ const Login = () => {
             //consulto las tablas restantes solo si hay internet
             if(isOnline){
                 setLoading(true);
-                const indiceAleatorioD = Math.floor(Math.random() * datosInteresantes.length);
-                setDatoAleatorio(datosInteresantes[indiceAleatorioD]);
-
                 //solo los clientes que tengan el cd_sap del usuario
                 await getClientes(result.user.cd_sap).catch(err => console.error("Error cargando clientes en segundo plano:", err));
                 await getItems(dataLogin.bodega).catch(err => console.error("Error cargando items en segundo plano:", err));
@@ -287,7 +377,6 @@ const Login = () => {
             <PreloaderLogin loading={loading} logo={logo} />
         )}
 
-       
         {/* alerta de conexion */}
         <ConnectionAlert/>
 

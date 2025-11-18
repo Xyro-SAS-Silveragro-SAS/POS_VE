@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Funciones from '../../../helpers/Funciones';
 import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
-import { useNavigate } from 'react-router';
-const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
+const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
     
     const { isOnline }            = useConnection()
+    const [cargando, setCargando] = useState(false)
+    const [destinosLocal, setDestinosLocal] = useState(destinos || [])
     
     const [formData, setFormData] = useState({
         fechaEntrega: '',
@@ -26,6 +27,78 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
         }))
         
     },[cabezaPedido])
+
+    // Función para cargar destinos desde la base de datos local
+    const cargarDestinosLocales = useCallback(async () => {
+        try {
+            const destinosDB = await db.destinos
+                .where('SN')
+                .equals(cabezaPedido.tx_cod_sn)
+                .toArray()
+            setDestinosLocal(destinosDB)
+        } catch (error) {
+            console.error('Error al cargar destinos desde BD local:', error)
+        }
+    }, [cabezaPedido.tx_cod_sn])
+
+
+    const getDestinos = useCallback(async () => {
+        try {
+            setCargando(true)
+            // Consultar la API para obtener los destinos con timeout
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 segundos timeout
+            const destinos = await api.get('api/clientes/destinos', { signal: controller.signal })
+            clearTimeout(timeoutId)
+            if (destinos && destinos.datos && destinos.datos.length > 0) {
+                // Solo limpiar la tabla si tenemos datos válidos para reemplazar
+                await db.table('destinos').clear()
+                // Si el usuario tiene destinos, los guardamos
+                await db.destinos.bulkAdd(destinos.datos)
+                // Actualizar el estado local con los nuevos destinos
+                console.log(`Destinos actualizados: ${destinos.datos.length} registros`)
+                await cargarDestinosLocales()
+            } else {
+                console.warn("No se recibieron datos válidos de destinos o la respuesta está vacía")
+                // No limpiamos la tabla si no tenemos datos válidos
+                // Cargar destinos existentes desde la base de datos local
+                await cargarDestinosLocales()
+            }
+            setCargando(false)
+        }
+        catch (error) {
+            console.error("Error al cargar destinos:", error)
+            // En caso de error de red o timeout, no limpiar los datos existentes
+            try {
+                const destinosExistentes = await db.destinos.count()
+                if (destinosExistentes === 0) {
+                    console.warn("No hay destinos en la base de datos local")
+                } else {
+                    console.log(`Manteniendo ${destinosExistentes} destinos existentes en BD local`)
+                    // Cargar los destinos existentes en el estado
+                    await cargarDestinosLocales()
+                }
+            } catch (dbError) {
+                console.error("Error al verificar destinos en BD local:", dbError)
+            }
+            setCargando(false)
+        }
+    }, [cargarDestinosLocales])
+
+    // useEffect para cargar destinos cuando el componente se monta
+    useEffect(() => {
+        if (isOpen && isOnline) {
+            getDestinos()
+        }
+    }, [isOpen, isOnline, getDestinos])
+
+    // useEffect para cargar destinos locales cuando el modal se abre
+    useEffect(() => {
+        if (isOpen) {
+            cargarDestinosLocales()
+        }
+    }, [isOpen, cargarDestinosLocales])
+
 
     useEffect(()=>{
         if(isOpen){
@@ -157,7 +230,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                     boxShadow: '0px -4px 12px rgba(0, 0, 0, 0.1)'
                 }}
             >
-                <div className="w-full h-full flex flex-col p-6">
+                <div className="w-full h-full flex flex-col p-6 relative">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold">Detalles de Entrega</h2>
                         <button 
@@ -170,103 +243,111 @@ const ModalDetallesEntrega = ({ isOpen, onClose, onSave, titulo, destinos=null, 
                         </button>
                     </div>
 
-                    
-                        <div className="space-y-6">
-                            {/* Fecha de Entrega */}
-                            <div className='grid grid-cols-2 gap-4'>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Fecha de Entrega
-                                    </label>
-                                    <input
-                                        type="date"
-                                        min={(() => {
-                                            const tomorrow = new Date();
-                                            tomorrow.setDate(tomorrow.getDate() + 1);
-                                            // Usar métodos locales para evitar desfase por zona horaria
-                                            const year = tomorrow.getFullYear();
-                                            const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                                            const day = String(tomorrow.getDate()).padStart(2, '0');
-                                            return `${year}-${month}-${day}`;
-                                        })()}
-                                        name="fechaEntrega"
-                                        value={formData.fechaEntrega}
-                                        onChange={handleChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Tipo de Envío */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Tipo de Envío
-                                    </label>
-                                    <select
-                                        name="tipoEnvio"
-                                        value={formData.tipoEnvio}
-                                        onChange={handleChange}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                                        required
-                                    >
-                                        <option value="">Seleccione un tipo de envío</option>
-                                        <option value="distribucion">Distribución</option>
-                                        <option value="remesado">Remesado</option>
-                                        <option value="bodega">Recibir en bodega</option>
-                                    </select>
-                                </div>
+                    {/* Preloader cuando está cargando destinos */}
+                    {cargando && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-10">
+                            <div className="flex flex-col items-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+                                <p className="mt-4 text-gray-600">Cargando destinos...</p>
                             </div>
+                        </div>
+                    )}
 
+                    <div className="space-y-6">
+                        {/* Fecha de Entrega */}
+                        <div className='grid grid-cols-2 gap-4'>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Destino
+                                    Fecha de Entrega
+                                </label>
+                                <input
+                                    type="date"
+                                    min={(() => {
+                                        const tomorrow = new Date();
+                                        tomorrow.setDate(tomorrow.getDate() + 1);
+                                        // Usar métodos locales para evitar desfase por zona horaria
+                                        const year = tomorrow.getFullYear();
+                                        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                        const day = String(tomorrow.getDate()).padStart(2, '0');
+                                        return `${year}-${month}-${day}`;
+                                    })()}
+                                    name="fechaEntrega"
+                                    value={formData.fechaEntrega}
+                                    onChange={handleChange}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            {/* Tipo de Envío */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Tipo de Envío
                                 </label>
                                 <select
-                                    name="destino"
-                                    value={formData.destino}
+                                    name="tipoEnvio"
+                                    value={formData.tipoEnvio}
                                     onChange={handleChange}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                                     required
                                 >
-                                    <option value="">Seleccione un destino</option>
-
-                                    {destinos && destinos.map((destino, index) => (
-                                        <option key={index} value={`${destino.id_destinos}|${destino.Address}|${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
-                                    ))}
-
+                                    <option value="">Seleccione un tipo de envío</option>
+                                    <option value="distribucion">Distribución</option>
+                                    <option value="remesado">Remesado</option>
+                                    <option value="bodega">Recibir en bodega</option>
                                 </select>
                             </div>
-
-                            {/* Observaciones */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Observaciones
-                                </label>
-                                <textarea
-                                    name="observaciones"
-                                    value={formData.observaciones}
-                                    onChange={handleChange}
-                                    maxLength={200}
-                                    rows="4"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
-                                    placeholder="Ingrese observaciones adicionales..."
-                                />
-                                <small>Máximo {formData.observaciones.length}/200 Caracteres</small>
-                            </div>
                         </div>
 
-                        <div className="mt-6">
-                            <button onClick={handleSendProccess}
-                                type="submit"
-                                className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex justify-center items-center"
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Destino
+                            </label>
+                            <select
+                                name="destino"
+                                value={formData.destino}
+                                onChange={handleChange}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                required
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer sincronizarBtn mr-2" >
-                                    <path fillRule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clipRule="evenodd" />
-                                </svg>
-                                SINCRONIZAR {(titulo === 'pedidos') ? 'PEDIDO' : 'COTIZACIÓN'}
-                            </button>
+                                <option value="">Seleccione un destino</option>
+
+                                {destinosLocal && destinosLocal.map((destino, index) => (
+                                    <option key={index} value={`${destino.id_destinos}|${destino.Address}|${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
+                                ))}
+
+                            </select>
                         </div>
-                    
+
+                        {/* Observaciones */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Observaciones
+                            </label>
+                            <textarea
+                                name="observaciones"
+                                value={formData.observaciones}
+                                onChange={handleChange}
+                                maxLength={200}
+                                rows="4"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent resize-none"
+                                placeholder="Ingrese observaciones adicionales..."
+                            />
+                            <small>Máximo {formData.observaciones.length}/200 Caracteres</small>
+                        </div>
+                    </div>
+
+                    <div className="mt-6">
+                        <button onClick={handleSendProccess}
+                            type="submit"
+                            className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex justify-center items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer sincronizarBtn mr-2" >
+                                <path fillRule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clipRule="evenodd" />
+                            </svg>
+                            SINCRONIZAR {(titulo === 'pedidos') ? 'PEDIDO' : 'COTIZACIÓN'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

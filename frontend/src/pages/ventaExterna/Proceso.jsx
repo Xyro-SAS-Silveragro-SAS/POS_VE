@@ -645,6 +645,12 @@ const Proceso = () => {
                                                 {cabezaPedido.fechaEntrega}
                                             </span>
                                         </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-700">
+                                            <span className="font-bold">BODEGA:</span>
+                                            <span className="font-normal uppercase">
+                                                {cabezaPedido.tx_cod_alm_pos}
+                                            </span>
+                                        </div>
                                         { cabezaPedido && cabezaPedido.in_tipo === 'pedidos' && (
                                             <div className="flex justify-between items-center py-2 border-b border-gray-700">
                                                 <span className="font-bold">CODIGO SAP:</span>
