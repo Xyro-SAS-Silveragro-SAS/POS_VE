@@ -115,6 +115,20 @@ const Proceso = () => {
         setCargando(true);
         
         try {
+            // Validar que la sesión está activa antes de continuar
+            if (!currentUser || !currentUser.cd_sap || !currentUser.tx_empleado_sap || !currentUser.id_usuario) {
+                setCargando(false);
+                Funciones.alerta(
+                    "Sesión Expirada",
+                    "Su sesión ha expirado o no está activa. Por favor, cierre sesión e inicie sesión nuevamente para continuar.",
+                    "error",
+                    () => {
+                        navigate('/login');
+                    }
+                );
+                return;
+            }
+            
             // Cuando el pedido no existe lo creo
             if(idProceso === undefined){
                 const nuevaCabeza = {
@@ -249,6 +263,19 @@ const Proceso = () => {
 
     //funcion que agrega al carrito las lineas
     const handleAddToCar = async (item) => {
+        // Validar que la sesión está activa antes de continuar
+        if (!currentUser || !currentUser.cd_sap || !currentUser.tx_empleado_sap || !currentUser.id_usuario) {
+            Funciones.alerta(
+                "Sesión Expirada",
+                "Su sesión ha expirado o no está activa. Por favor, cierre sesión e inicie sesión nuevamente para continuar.",
+                "error",
+                () => {
+                    navigate('/login');
+                }
+            );
+            return;
+        }
+        
         if(!cabezaPedido?.id) {
             toast.error('Error: No hay pedido activo');
             return;
@@ -451,6 +478,19 @@ const Proceso = () => {
     };
 
     const abreModalDetallesEntrega = (valor) => {
+        // Validar que la sesión está activa antes de continuar
+        if (!currentUser || !currentUser.cd_sap || !currentUser.tx_empleado_sap || !currentUser.id_usuario) {
+            Funciones.alerta(
+                "Sesión Expirada",
+                "Su sesión ha expirado o no está activa. Por favor, cierre sesión e inicie sesión nuevamente para continuar.",
+                "error",
+                () => {
+                    navigate('/login');
+                }
+            );
+            return;
+        }
+        
         // Verificar si clienteSel tiene propiedades (es un objeto con datos)
         const clienteSeleccionado = cabezaPedido.tx_nom_sn_nombre && cabezaPedido.tx_nom_sn_nombre !== '';        
         if(!clienteSeleccionado){
@@ -496,6 +536,19 @@ const Proceso = () => {
     }
 
     const handleConvertirPedido = () => {
+        // Validar que la sesión está activa antes de continuar
+        if (!currentUser || !currentUser.cd_sap || !currentUser.tx_empleado_sap || !currentUser.id_usuario) {
+            Funciones.alerta(
+                "Sesión Expirada",
+                "Su sesión ha expirado o no está activa. Por favor, cierre sesión e inicie sesión nuevamente para continuar.",
+                "error",
+                () => {
+                    navigate('/login');
+                }
+            );
+            return;
+        }
+        
         Funciones.confirmacion("Atencion","Está a punto de convertir esta cotización en un pedido, ¿Desea continuar?","info", async()=>{
             
             // Clona la cabeza y las líneas para no mutar el estado original
