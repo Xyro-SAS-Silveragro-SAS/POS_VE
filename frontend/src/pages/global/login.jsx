@@ -9,8 +9,17 @@ import ConnectionAlert from "../../components/global/ConnectionAlert"
 import Funciones from "../../helpers/Funciones"
 import logo from "../../assets/img/logo.png"
 import xyro from "../../assets/img/xyro.png"
+// NAVIDAD: Importar imagen de fondo navideño - QUITAR EN ENERO
+import bgNavidad from "../../assets/img/bgNavidad.webp"
 import Mensajes from "../../data/Mensajes"
 import PreloaderLogin from "../../components/global/PreloaderLogin"
+
+// NAVIDAD: Ajustes navideños en login.jsx
+// - Import de bgNavidad.webp
+// - Fondo navideño en div principal (cambiar style por bg-[#546C4C])
+// - Estilos CSS para animación de nieve
+// - Contenedor de nieve con 50 copos
+// QUITAR TODO LO MARCADO CON "NAVIDAD" EN ENERO
 
 const Login = () => {
     const [loading, setLoading]                     = useState(false);
@@ -372,6 +381,15 @@ const Login = () => {
 
   return (
     <>
+        {/* NAVIDAD: Estilos CSS para animación de nieve - QUITAR EN ENERO */}
+        <style>{`
+          @keyframes fall {
+            0% { transform: translateY(-10px) translateX(-10px); }
+            50% { transform: translateY(50vh) translateX(10px); }
+            100% { transform: translateY(100vh) translateX(-10px); }
+          }
+        `}</style>
+
         {/* Preloader overlay */}
         {loading && (
             <PreloaderLogin loading={loading} logo={logo} />
@@ -380,8 +398,9 @@ const Login = () => {
         {/* alerta de conexion */}
         <ConnectionAlert/>
 
-        <div className="w-[100%] h-dvh bg-[#546C4C] text-gray-600">
-            <div className="m-auto py-[20%] px-[10%] w-full md:w-[80%] lg:w-[30%] lg:p-[5%]">
+        {/* NAVIDAD: Div principal con fondo navideño - CAMBIAR bg-[#546C4C] POR bg-[#546C4C] Y QUITAR style EN ENERO */}
+        <div className="w-[100%] h-dvh text-gray-600" style={{ backgroundImage: `url(${bgNavidad})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+            <div className="m-auto py-[20%] px-[10%] w-full md:w-[80%] lg:w-[30%] lg:p-[5%] relative z-10">
                 <img src={logo} alt="" className="mb-[10%] w-[60%] m-auto"/>
 
                 {/* Botón de instalación PWA */}
@@ -464,6 +483,26 @@ const Login = () => {
                     </button>
                 
 
+            </div>
+
+            {/* NAVIDAD: Contenedor del efecto de nieve - QUITAR COMPLETAMENTE EN ENERO */}
+            <div className="snow-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}>
+                {Array.from({length: 50}, (_, i) => {
+                    const size = Math.random() * 10 + 5;
+                    return (
+                        <div key={i} className="snowflake" style={{
+                            position: 'absolute',
+                            width: `${size}px`,
+                            height: `${size}px`,
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            animation: `fall ${Math.random() * 10 + 5}s linear infinite`,
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 5}s`,
+                            opacity: Math.random() * 0.8 + 0.2
+                        }}></div>
+                    );
+                })}
             </div>
         </div>
 
