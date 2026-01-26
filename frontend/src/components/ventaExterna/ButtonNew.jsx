@@ -1,5 +1,5 @@
 import { useState } from "react"
-const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,toggleProductos=null}) => {
+const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,toggleProductos=null, navigate=null}) => {
     const [mostrarMenuFAB, setMostrarMenuFAB] = useState(false)
     // Función para alternar el menú FAB
     const toggleMenuFAB = () => {
@@ -21,6 +21,11 @@ const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,togglePro
         setMostrarMenuFAB(false)
     }
 
+    const handleReporte = () => {
+        navigate && navigate('/reporte-estados')
+        setMostrarMenuFAB(false)
+    }
+
     return (
         <>
             {/* Overlay para cerrar el menú al hacer clic fuera */}
@@ -35,6 +40,24 @@ const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,togglePro
             <div className={`fixed bottom-36 right-5 z-50 transition-all duration-300 ${
                 mostrarMenuFAB ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
             }`}>
+                {/* Botón Estado Pedidos - Solo visible cuando titulo es Pedidos */}
+                {titulo === 'Pedidos' && (
+                    <div className="flex items-center mb-4">
+                        <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
+                            Estado Pedidos
+                        </span>
+                        <button
+                            onClick={handleReporte}
+                            className="p-3 bg-green-600 hover:bg-green-700 rounded-full shadow-lg transition-colors duration-200"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-6">
+                                <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
+                                <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
+                            </svg>
+                        </button>
+                    </div>
+                )}
+                
                 {/* Botón Productos */}
                 <div className="flex items-center mb-4">
                 <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
