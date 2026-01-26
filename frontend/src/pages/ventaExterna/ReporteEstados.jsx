@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import TopBar from "../../components/global/TopBar";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import ApiMTS from "../../services/apiMts";
-import { Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Eye, ChevronUp } from "lucide-react";
 
 const ESTADOS = {
   ALL: "--Todos los Estados--",
@@ -26,7 +25,6 @@ const ESTADOS = {
 };
 
 const ReporteEstados = () => {
-  const navigate = useNavigate();
   const [fechaInicial, setFechaInicial] = useState(new Date());
   const [fechaFinal, setFechaFinal] = useState(new Date());
   const [estadoSeleccionado, setEstadoSeleccionado] = useState("ALL");
