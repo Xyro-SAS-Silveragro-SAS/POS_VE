@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { db } from "../../../db/db"
 import { MapPin, X } from "lucide-react"
+import { getDestinosFromSL } from "../../../services/serviceLayer"
 
 const ModalDestinos = ({ showDestinos = false, toggleDestinos = null, clienteSeleccionado = null }) => {
     const [destinos, setDestinos] = useState([])
@@ -12,13 +13,9 @@ const ModalDestinos = ({ showDestinos = false, toggleDestinos = null, clienteSel
             
             setLoading(true);
             try {
-                // Consultar destinos usando el SN (código del cliente) como referencia
-                const destinosCliente = await db.destinos
-                    .where('SN')
-                    .equals(clienteSeleccionado.Codigo)
-                    .toArray();
-                
-                setDestinos(destinosCliente);
+                // Consultar destinos desde Service Layer
+                const destinosData = await getDestinosFromSL(clienteSeleccionado.Codigo);
+                setDestinos(destinosData);
             } catch (error) {
                 console.error('Error al consultar destinos:', error);
                 setDestinos([]);
@@ -103,7 +100,7 @@ const ModalDestinos = ({ showDestinos = false, toggleDestinos = null, clienteSel
                                 </div>
                                 
                                 {destinos.map((destino, index) => (
-                                    <div key={destino.id || index} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                                    <div key={destino.RowNum || index} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
                                         <div className="p-6">
                                             <div className="flex items-start space-x-4">
                                                 <div className="flex-shrink-0">
@@ -117,10 +114,10 @@ const ModalDestinos = ({ showDestinos = false, toggleDestinos = null, clienteSel
                                                             <h4 className="text-lg font-semibold text-gray-900 mb-2">
                                                                 Destino #{index + 1}
                                                             </h4>
-                                                            {destino.Address && (
+                                                            {destino.AddressName && (
                                                                 <div className="mb-2">
                                                                     <span className="text-sm font-medium text-gray-600">Dirección:</span>
-                                                                    <p className="text-gray-800">{destino.Address}</p>
+                                                                    <p className="text-gray-800">{destino.AddressName}</p>
                                                                 </div>
                                                             )}
                                                             {destino.Street && (
@@ -131,16 +128,16 @@ const ModalDestinos = ({ showDestinos = false, toggleDestinos = null, clienteSel
                                                             )}
                                                         </div>
                                                         <div>
-                                                            {destino.Ciudad && (
+                                                            {destino.City && (
                                                                 <div className="mb-2">
                                                                     <span className="text-sm font-medium text-gray-600">Ciudad:</span>
-                                                                    <p className="text-gray-800">{destino.Ciudad}</p>
+                                                                    <p className="text-gray-800">{destino.City}</p>
                                                                 </div>
                                                             )}
-                                                            {destino.SN && (
+                                                            {destino.BPCode && (
                                                                 <div className="mb-2">
-                                                                    <span className="text-sm font-medium text-gray-600">Código SN:</span>
-                                                                    <p className="text-gray-800">{destino.SN}</p>
+                                                                    <span className="text-sm font-medium text-gray-600">Código BP:</span>
+                                                                    <p className="text-gray-800">{destino.BPCode}</p>
                                                                 </div>
                                                             )}
                                                         </div>
