@@ -12,4 +12,7 @@ export const API_VECTOR = import.meta.env.VITE_API_VECTOR || '';
 export const OLLAMA_URL = import.meta.env.VITE_OLLAMA_URL || '';
 export const MODEL_NAME = import.meta.env.VITE_MODEL_NAME || '';
 export const URL_SITE = import.meta.env.VITE_URL_SITE || '';
+export const API_REPORTE = import.meta.env.VITE_API_MTS_REPORTE || '';
+export const SL_BASE_URL = import.meta.env.VITE_SL_BASE_URL || '/api/sl';
+export const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/obtenerDestinosPosVe';
 

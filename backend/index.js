@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const http = require('http');
 const axios = require('axios');
+const https = require('https');
 
 dotenv.config();
 const app = express();
@@ -447,6 +448,46 @@ async function insertProductsToQdrant(productos) {
     // Usar la función de procesamiento por lotes
     return await procesarDatosPorLotes(productos);
 }
+
+// Endpoint para consultar destinos desde Service Layer
+apiRouter.get('/destinos/:cardCode', async (req, res) => {
+    const { cardCode } = req.params;
+    try {
+        // Login to Service Layer
+        const loginResponse = await axios.post('https://181.79.52.58:55553/b1s/v1/Login', {
+            CompanyDB: "SILVERAGRO",
+            Password: "Silver25",
+            UserName: "Sistema2"
+        }, {
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+
+        const sessionId = loginResponse.data.SessionId;
+
+        // Query Business Partner addresses
+        const bpResponse = await axios.get(`https://181.79.52.58:55553/b1s/v1/BusinessPartners('${cardCode}')?$select=CardCode,CardName,BPAddresses`, {
+            headers: {
+                'Cookie': `B1SESSION=${sessionId}`
+            },
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+
+        // Filter addresses by AddressType 'bo_ShipTo'
+        const shipToAddresses = bpResponse.data.BPAddresses.filter(addr => addr.AddressType === 'bo_ShipTo');
+
+        res.json({
+            success: true,
+            destinos: shipToAddresses
+        });
+    } catch (error) {
+        console.error('Error consultando destinos desde SL:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al consultar destinos',
+            error: error.message
+        });
+    }
+});
 
 //endpoint principal
 app.use('/api', apiRouter);

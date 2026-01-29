@@ -251,7 +251,7 @@ const Home = () => {
                     selectsRange
                     isClearable={true}
                     dateFormat="dd/MM/yyyy"
-                    className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm mr-4"
+                    className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm"
                 />
             </div>
           </div>
@@ -358,7 +358,7 @@ const Home = () => {
           </div>
           
           {/* boton de agregar nuevo proceso */}
-          <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} />
+          <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} navigate={navigate} />
 
         </div>
         

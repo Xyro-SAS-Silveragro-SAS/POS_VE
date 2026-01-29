@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 import ModalDetallesEntrega from "../../components/global/modal/ModalDetallesEntrega"
 import { API_MTS } from "../../config/config"
+import { getDestinosFromSL } from '../../services/serviceLayer';
 
 
 const Proceso = () => {
@@ -471,11 +472,7 @@ const Proceso = () => {
                 return;
             }
             
-            const destinosClientes = await db.destinos
-                .where('SN')
-                .equals(cabezaPedido.tx_cod_sn)
-                .toArray();
-                
+            const destinosClientes = await getDestinosFromSL(cabezaPedido.tx_cod_sn);
             setDestinos(destinosClientes || []);
         } catch (error) {
             console.error('Error fetching destinos:', error);

@@ -1,9 +1,9 @@
 import axios from 'axios';
-import {TOKEN, API_MTS_OLD} from '../config/config.jsx';
+import {TOKEN, API_REPORTE} from '../config/config.jsx';
 
 // Crear una instancia de axios con la configuración base
 const ApiMTS = axios.create({
-  baseURL: API_MTS_OLD,
+  baseURL: API_REPORTE,
   headers: {
     'Content-Type': 'application/json',
   }

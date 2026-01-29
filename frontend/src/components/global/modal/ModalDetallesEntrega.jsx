@@ -3,6 +3,7 @@ import Funciones from '../../../helpers/Funciones';
 import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
+import { getDestinosFromSL } from '../../../services/serviceLayer';
 const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
     
     const { isOnline }            = useConnection()
@@ -28,16 +29,17 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
         
     },[cabezaPedido])
 
-    // Función para cargar destinos desde la base de datos local
+    // Función para cargar destinos desde Service Layer
     const cargarDestinosLocales = useCallback(async () => {
         try {
-            const destinosDB = await db.destinos
-                .where('SN')
-                .equals(cabezaPedido.tx_cod_sn)
-                .toArray()
-            setDestinosLocal(destinosDB)
+            setCargando(true);
+            const destinosData = await getDestinosFromSL(cabezaPedido.tx_cod_sn);
+            setDestinosLocal(destinosData);
         } catch (error) {
-            console.error('Error al cargar destinos desde BD local:', error)
+            console.error('Error al cargar destinos desde SL:', error);
+            setDestinosLocal([]);
+        } finally {
+            setCargando(false);
         }
     }, [cabezaPedido.tx_cod_sn])
 
@@ -88,9 +90,9 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
     // useEffect para cargar destinos cuando el componente se monta
     useEffect(() => {
         if (isOpen && isOnline) {
-            getDestinos()
+            cargarDestinosLocales()
         }
-    }, [isOpen, isOnline, getDestinos])
+    }, [isOpen, isOnline, cargarDestinosLocales])
 
     // useEffect para cargar destinos locales cuando el modal se abre
     useEffect(() => {
@@ -313,7 +315,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
                                 <option value="">Seleccione un destino</option>
 
                                 {destinosLocal && destinosLocal.map((destino, index) => (
-                                    <option key={index} value={`${destino.id_destinos}|${destino.Address}|${destino.Street}`} >{destino.Address}  - {destino.Street}</option>
+                                    <option key={destino.RowNum} value={`${destino.RowNum}|${destino.AddressName}|${destino.Street}`} >{destino.AddressName} - {destino.Street}</option>
                                 ))}
 
                             </select>

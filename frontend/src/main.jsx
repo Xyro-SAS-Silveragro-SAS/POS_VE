@@ -12,6 +12,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { TourProvider } from '@reactour/tour'
 import { TourContextProvider } from './context/TourContext.jsx';
 import InfoProducto from './pages/external/InfoProducto.jsx';
+import ReporteEstados from './pages/ventaExterna/ReporteEstados.jsx';
 const root = document.getElementById('root');
 // Steps vacíos - se manejan desde el TourContext
 const initialSteps = [];
@@ -27,6 +28,7 @@ createRoot(root).render(
                       <Route path="/home" element={<Home />} />
                       <Route path="/proceso/:tipoProceso/:idProceso?" element={<Proceso />} />
                       <Route path="/infoProducto/:bodega/:producto" element={<InfoProducto />} />
+                      <Route path="/reporte-estados" element={<ReporteEstados />} />
                       
                     </Routes>
                 </BrowserRouter>
