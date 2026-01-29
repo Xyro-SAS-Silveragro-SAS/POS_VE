@@ -1,6 +1,28 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,toggleProductos=null, navigate=null}) => {
     const [mostrarMenuFAB, setMostrarMenuFAB] = useState(false)
+    const [showReportButton, setShowReportButton] = useState(false)
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const response = await fetch('https://n8n.srv1097949.hstgr.cloud/webhook/configPOSVE');
+                if (!response.ok) {
+                    setShowReportButton(false);
+                    return;
+                }
+                const data = await response.json();
+                if (data && data.botonInforme === true) {
+                    setShowReportButton(true);
+                } else {
+                    setShowReportButton(false);
+                }
+            } catch {
+                setShowReportButton(false);
+            }
+        };
+        fetchConfig();
+    }, []);
     // Función para alternar el menú FAB
     const toggleMenuFAB = () => {
         setMostrarMenuFAB(!mostrarMenuFAB)
@@ -40,8 +62,8 @@ const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,togglePro
             <div className={`fixed bottom-36 right-5 z-50 transition-all duration-300 ${
                 mostrarMenuFAB ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
             }`}>
-                {/* Botón Estado Pedidos - Solo visible cuando titulo es Pedidos */}
-                {titulo === 'Pedidos' && (
+                {/* Botón Estado Pedidos - Solo visible cuando titulo es Pedidos y showReportButton es true */}
+                {titulo === 'Pedidos' && showReportButton && (
                     <div className="flex items-center mb-4">
                         <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
                             Estado Pedidos
