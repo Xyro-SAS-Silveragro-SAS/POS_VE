@@ -1,5 +1,6 @@
 import api from './apiService.jsx';
 import { db } from '../db/db';
+import { N8N_CLIENTES_URL } from '../config/config';
 
 /**
  * Service for synchronizing data from API to IndexedDB
@@ -16,8 +17,15 @@ class SyncService {
     try {
       if (setLoading) setLoading(true);
       
-      // Get clients from API
-      const clientes = await api.get(`api/clientes/vexterna/codigo/${cdSap}`);
+      // Get clients from N8N
+      // const clientes = await api.get(`api/clientes/vexterna/codigo/${cdSap}`);
+      const response = await fetch(N8N_CLIENTES_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: Number(cdSap) })
+      });
+      const text = await response.text();
+      const clientes = text ? JSON.parse(text) : null;
       
       if (clientes && clientes.datos && clientes.datos.length > 0) {
         // Clear existing clients and add new ones

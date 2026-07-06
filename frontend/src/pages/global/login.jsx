@@ -1,4 +1,4 @@
-import { VERSION} from "../../config/config"
+import { VERSION, N8N_CLIENTES_URL } from "../../config/config"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import api from "../../services/apiService"
@@ -182,12 +182,20 @@ const Login = () => {
     const getClientes = async (cdSap) => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los clientes con timeout
+          // Consultar N8N para obtener los clientes con timeout
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 segundos timeout
           
-          const clientes = await api.get('api/clientes/vexterna/codigo/'+cdSap, { signal: controller.signal })
+          // const clientes = await api.get('api/clientes/vexterna/codigo/'+cdSap, { signal: controller.signal })
+          const response = await fetch(N8N_CLIENTES_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ "codigo": Number(cdSap) }),
+            signal: controller.signal
+          })
           clearTimeout(timeoutId)
+          const text = await response.text()
+          const clientes = text ? JSON.parse(text) : null
           
           if (clientes && clientes.datos && clientes.datos.length > 0) {
                 // Solo limpiar la tabla si tenemos datos válidos para reemplazar
