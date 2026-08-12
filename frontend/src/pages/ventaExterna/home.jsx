@@ -13,9 +13,10 @@ import ModalProductos from "../../components/global/modal/ModalProductos";
 import Funciones from "../../helpers/Funciones";
 import api from "../../services/apiService";
 import { API_MTS } from "../../config/config";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, format } from "date-fns";
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
+
+const ITEMS_POR_PAGINA = 10;
 
 const Home = () => {
   const [titulo, setTitulo]                                             = useState('')
@@ -27,6 +28,10 @@ const Home = () => {
   const { isAuthenticated, isLoading, currentUser, logout }             = useAuth()
   const [listaProcesos, setListaProcesos]                               = useState(null)
   const [procesosFiltrados, setProcesosFiltrados]                       = useState(null)
+  const [paginaActual, setPaginaActual]                                 = useState(1)
+  const [origenFiltro, setOrigenFiltro]                                 = useState('todas')
+  const [mostrarFiltro, setMostrarFiltro]                               = useState(false)
+  const [busqueda, setBusqueda]                                         = useState('')
   const [mostrarModalUsuario, setMostrarModalUsuario]                   = useState(false)
   const [showClientes, setShowClientes]                                 = useState(false);
   const [showProductos, setShowProductos]                               = useState(false);
@@ -62,8 +67,8 @@ const Home = () => {
                                    .sortBy('dt_fecha_reg')
                                    
       const dataLista = lista.map((item) => {
-        return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
-      }).filter(item => item !== null)                           
+        return (String(item.tx_usuario_logueado) === String(currentUser.id_usuario)) ? item : null
+      }).filter(item => item !== null)
       setListaProcesos(dataLista)
     }
     if (botonActivo && currentUser) {
@@ -75,32 +80,36 @@ const Home = () => {
   const actualizaProcesos = async () => {
     const lista = await db.cabeza.where('in_tipo')
                                    .equals(botonActivo.toLowerCase())
-                                   .reverse() 
+                                   .reverse()
                                    .sortBy('dt_fecha_reg')
-                                   
+
       const dataLista = lista.map((item) => {
-        return (item.tx_usuario_logueado === currentUser.id_usuario) ? item : null
-      }).filter(item => item !== null)                           
+        return (String(item.tx_usuario_logueado) === String(currentUser.id_usuario)) ? item : null
+      }).filter(item => item !== null)
       setListaProcesos(dataLista)
-  } 
+  }
 
   // Efecto para aplicar el filtro cuando cambian los procesos o el filtro seleccionado
   useEffect(() => {
     if (listaProcesos) {
-      const procesosFiltrados = filtrarProcesos(listaProcesos, startDate, endDate)
+      const procesosFiltrados = filtrarProcesos(listaProcesos, startDate, endDate, origenFiltro)
       setProcesosFiltrados(procesosFiltrados)
+      setPaginaActual(1)
     }
-  }, [listaProcesos, startDate, endDate])
+  }, [listaProcesos, startDate, endDate, origenFiltro])
 
   // Función para filtrar procesos según el criterio seleccionado
-  const filtrarProcesos = (procesos, fechaInicio, fechaFin) => {
+  const filtrarProcesos = (procesos, fechaInicio, fechaFin, origenSeleccionado) => {
     setProcesosFiltrados([])
     if (!procesos || procesos.length === 0) return []
 
     return procesos.filter(proceso => {
-      
+
+      if (origenSeleccionado === 'masivo' && Number(proceso.masivo) !== 1) return false
+      if (origenSeleccionado === 'individual' && Number(proceso.masivo) === 1) return false
+
       if (!proceso.dt_fecha_reg) return false
-      
+
       const fechaProceso = new Date(proceso.dt_fecha_reg)
       fechaProceso.setHours(0, 0, 0, 0)
 
@@ -122,11 +131,54 @@ const Home = () => {
     })
   }
 
+  const limpiarFiltros = () => {
+    setStartDate(null)
+    setEndDate(null)
+    setOrigenFiltro('todas')
+  }
+
+  const filtrosActivos = !!(startDate || endDate) || origenFiltro !== 'todas'
+
+  const resumenFiltro = (() => {
+    const partes = []
+    if (startDate && endDate) {
+      partes.push(`${format(startDate, 'dd/MM/yyyy')} - ${format(endDate, 'dd/MM/yyyy')}`)
+    } else if (startDate) {
+      partes.push(format(startDate, 'dd/MM/yyyy'))
+    }
+    if (origenFiltro !== 'todas') {
+      partes.push(origenFiltro === 'masivo' ? 'Masivo' : 'Individual')
+    }
+    return partes.length > 0 ? partes.join(' · ') : 'Filtros'
+  })()
+
+  // La búsqueda por texto se aplica sobre lo que ya dejó pasar el filtro de fecha/origen
+  const procesosBuscados = (() => {
+    if (!procesosFiltrados) return []
+    const termino = busqueda.trim().toLowerCase()
+    if (!termino) return procesosFiltrados
+    return procesosFiltrados.filter((proceso) => {
+      const nombre = (proceso.tx_nom_sn_nombre || '').toLowerCase()
+      const codigoSap = String(proceso.DocNum || '').toLowerCase()
+      return nombre.includes(termino) || codigoSap.includes(termino)
+    })
+  })()
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [busqueda])
+
+  const totalPaginas = Math.max(1, Math.ceil(procesosBuscados.length / ITEMS_POR_PAGINA))
+  const procesosPaginados = procesosBuscados.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA)
+
   const handleChangeType = (tipo) => {
      const titulo      = (tipo === 'pedido') ? 'Pedidos' : 'Cotizaciones'
      const botonActivo = (tipo === 'pedido') ? 'pedidos' : 'cotizaciones'
      setBotonActivo(botonActivo)
      setTitulo(titulo)
+     // El origen (masivo/individual) solo aplica a pedidos; en cotizaciones siempre son individuales
+     setOrigenFiltro('todas')
+     setBusqueda('')
   }
   
   const nuevoProceso = (id) => {
@@ -239,31 +291,60 @@ const Home = () => {
               {titulo}
             </h1>
             <div className="relative flex items-center">
-                <DatePicker
-                    selected={startDate}
-                    onChange={(dates) => {
-                        const [start, end] = dates;
-                        setStartDate(start);
-                        setEndDate(end);
-                    }}
-                    startDate={startDate}
-                    endDate={endDate}
-                    selectsRange
-                    isClearable={true}
-                    dateFormat="dd/MM/yyyy"
-                    className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm"
-                />
+                <button
+                    type="button"
+                    onClick={() => setMostrarFiltro(true)}
+                    className="flex items-center gap-2 bg-white border border-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 pl-3 pr-2 py-1.5 rounded-full text-sm text-gray-700 shadow-sm transition-colors max-w-[220px]"
+                >
+                    <SlidersHorizontal size={15} className="text-gray-500 shrink-0" />
+                    <span className="whitespace-nowrap truncate">{resumenFiltro}</span>
+                    {filtrosActivos && (
+                        <span
+                            role="button"
+                            aria-label="Limpiar filtros"
+                            onClick={(e) => { e.stopPropagation(); limpiarFiltros(); }}
+                            className="text-gray-400 hover:text-red-500 rounded-full p-0.5 hover:bg-gray-100 shrink-0"
+                        >
+                            <X size={13} />
+                        </span>
+                    )}
+                </button>
             </div>
+          </div>
+
+          <Filtro
+              abierto={mostrarFiltro}
+              onClose={() => setMostrarFiltro(false)}
+              startDate={startDate}
+              endDate={endDate}
+              onChangeFechas={(start, end) => { setStartDate(start); setEndDate(end); }}
+              origen={origenFiltro}
+              onChangeOrigen={setOrigenFiltro}
+              onLimpiar={limpiarFiltros}
+              mostrarOrigen={botonActivo === 'pedidos'}
+          />
+
+          <div className="w-full px-[5%] lg:px-[3%] mb-4">
+              <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                      type="text"
+                      value={busqueda}
+                      onChange={(e) => setBusqueda(e.target.value)}
+                      placeholder="Buscar por cliente o código SAP..."
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent"
+                  />
+              </div>
           </div>
 
           <div className="flex flex-wrap w-full listaItemsHome">
               {/* Mostrar filtro seleccionado */}
-              
 
 
-          {procesosFiltrados && procesosFiltrados.length > 0 ? (
-            // Renderizar procesos filtrados
-            procesosFiltrados.map((pedido, index) => (
+
+          {procesosBuscados.length > 0 ? (
+            // Renderizar procesos de la página actual
+            procesosPaginados.map((pedido, index) => (
               <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer relative" >
 
                 {pedido && pedido.sync === 0 && (
@@ -300,6 +381,11 @@ const Home = () => {
                       )}
                   </div>
                   <div className="col-span-9 lg:col-span-10 relative">
+                    {pedido && pedido.in_tipo === 'pedidos' && (
+                      <span className={`block w-fit text-[10px] font-bold uppercase tracking-wide px-2 py-[2px] rounded-full mb-1 ${Number(pedido.masivo) === 1 ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {Number(pedido.masivo) === 1 ? 'Carga masiva' : 'Individual'}
+                      </span>
+                    )}
                     <strong>Código {titulo.toLowerCase() === 'pedidos' ? 'pedido':'cotización'}: </strong> ****{pedido.id_consec.toUpperCase() ? String(pedido.id_consec.toUpperCase()).slice(-5) : ''}<br/>
                     <strong>Cliente: </strong> {pedido.tx_nom_sn_nombre !== '' ? pedido.tx_nom_sn_nombre : 'Sin Cliente'}<br/>
 
@@ -354,11 +440,35 @@ const Home = () => {
                   </p>
               </div>
           )}
-              
+
           </div>
-          
+
+          {procesosBuscados.length > ITEMS_POR_PAGINA && (
+            <div className="flex items-center justify-center gap-4 w-full py-6">
+              <button
+                type="button"
+                onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                disabled={paginaActual === 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border border-gray-300 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <span className="text-sm text-gray-600">
+                Página {paginaActual} de {totalPaginas}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaActual === totalPaginas}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border border-gray-300 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+
           {/* boton de agregar nuevo proceso */}
-          <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} navigate={navigate} />
+          <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} navigate={navigate} botonActivo={botonActivo} />
 
         </div>
         

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,toggleProductos=null, navigate=null}) => {
+const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,toggleProductos=null, navigate=null, botonActivo=null}) => {
     const [mostrarMenuFAB, setMostrarMenuFAB] = useState(false)
     const [showReportButton, setShowReportButton] = useState(false)
 
@@ -45,6 +45,11 @@ const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,togglePro
 
     const handleReporte = () => {
         navigate && navigate('/reporte-estados')
+        setMostrarMenuFAB(false)
+    }
+
+    const handleCargaMasiva = () => {
+        navigate && navigate('/carga-masiva', { state: { tipoProceso: botonActivo } })
         setMostrarMenuFAB(false)
     }
 
@@ -109,20 +114,36 @@ const ButtonNew = ({nuevoProceso=null, titulo=null,toggleClientes=null,togglePro
                 </button>
                 </div>
 
+
+                {titulo === 'Pedidos' && (
+                    <div className="flex items-center mb-4">
+                        <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
+                            Carga masiva
+                        </span>
+                        <button
+                            onClick={handleCargaMasiva}
+                            className="p-3 bg-purple-600 hover:bg-purple-700 rounded-full shadow-lg transition-colors duration-200"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload-icon lucide-upload"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                        </button>
+                    </div>
+                )}
+
                 {/* Botón Nuevo */}
                 <div className="flex items-center mb-4">
-                <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
-                    Nuevo {(titulo === 'Pedidos') ? 'pedido':'cotización'}
-                </span>
-                <button
-                    onClick={handleNuevo}
-                    className="p-3 bg-purple-600 hover:bg-purple-700 rounded-full shadow-lg transition-colors duration-200"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-6">
-                    <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-                    </svg>
-                </button>
+                    <span className="bg-gray-800 text-white px-3 py-1 rounded-lg text-sm mr-3 shadow-lg whitespace-nowrap">
+                        Nuevo {(titulo === 'Pedidos') ? 'pedido':'cotización'}
+                    </span>
+                    <button
+                        onClick={handleNuevo}
+                        className="p-3 bg-purple-600 hover:bg-purple-700 rounded-full shadow-lg transition-colors duration-200"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="size-6">
+                        <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
+                        </svg>
+                    </button>
                 </div>
+
             </div>
 
             {/* Botón principal FAB */}

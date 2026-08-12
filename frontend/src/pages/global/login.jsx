@@ -390,8 +390,7 @@ const Login = () => {
 
         <div className="w-[100%] h-dvh text-gray-600 bg-[#546C4C]">
             <div className="m-auto py-[20%] px-[10%] w-full md:w-[80%] lg:w-[30%] lg:p-[5%] relative z-10">
-                <img src={logo} alt="" className="mb-[10%] w-[60%] m-auto"/>
-
+                <img src={logo} alt="" className="mb-[8%] w-[60%] m-auto"/>
                 {/* Botón de instalación PWA */}
                 {showInstallButton && !isAppInstalled && (
                     <div className="mb-6 p-4 bg-blue-100 border border-blue-300 rounded-lg">
@@ -472,6 +471,7 @@ const Login = () => {
                     </button>
                 
 
+            <h2 className="m-auto text-center text-white text-lg mt-[8%]"><small><strong>NORA</strong> - Núcleo de Operaciones y Relaciones Comerciales</small></h2>
             </div>
 
         </div>
