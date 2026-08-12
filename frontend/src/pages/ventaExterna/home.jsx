@@ -25,14 +25,13 @@ const Home = () => {
   const [startDate, setStartDate] = useState(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState(endOfMonth(new Date()));
   const { isOnline }                                                    = useConnection()
-  const { isAuthenticated, isLoading, currentUser, logout }             = useAuth()
+  const { isAuthenticated, isLoading, currentUser }                     = useAuth()
   const [listaProcesos, setListaProcesos]                               = useState(null)
   const [procesosFiltrados, setProcesosFiltrados]                       = useState(null)
   const [paginaActual, setPaginaActual]                                 = useState(1)
   const [origenFiltro, setOrigenFiltro]                                 = useState('todas')
   const [mostrarFiltro, setMostrarFiltro]                               = useState(false)
   const [busqueda, setBusqueda]                                         = useState('')
-  const [mostrarModalUsuario, setMostrarModalUsuario]                   = useState(false)
   const [showClientes, setShowClientes]                                 = useState(false);
   const [showProductos, setShowProductos]                               = useState(false);
   const { 
@@ -185,15 +184,6 @@ const Home = () => {
     navigate(`/proceso/${botonActivo}/${id}`)
   }
 
-   const toggleModalUsuario = () => {
-    setMostrarModalUsuario(!mostrarModalUsuario)
-  }
-
-  const handleLogout = () => {
-    logout()
-    setMostrarModalUsuario(false)
-  }
-
   const toggleClientes = () => {
       setShowClientes(!showClientes);
   }; 
@@ -284,7 +274,7 @@ const Home = () => {
 
   return (
     <>
-        <TopBar startTour={startTour} onUserClick={toggleModalUsuario} />
+        <TopBar startTour={startTour} />
         <div className={`w-full md:p-10 m-auto lg:w-[54%] mb-[20%] ${(isOnline) ? ' mt-[20%] lg:mt-[3%] md:mt-[13%] ' : ' mt-[30%] lg:mt-[5%] md:mt-[13%] '} flex flex-wrap text-gray-700 relative`}>
           <div className="w-full  flex items-center justify-between px-[5%] lg:px-[3%] mb-4">
             <h1 className="text-2xl font-bold flex items-center">
@@ -471,78 +461,7 @@ const Home = () => {
           <ButtonNew nuevoProceso={nuevoProceso} toggleClientes={toggleClientes} toggleProductos={toggleProductos} titulo={titulo} navigate={navigate} botonActivo={botonActivo} />
 
         </div>
-        
 
-
-     {/* Modal de información del usuario */}
-        {mostrarModalUsuario && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={toggleModalUsuario}>
-            <div className="bg-white rounded-lg p-6 w-11/12 max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-              {/* Header del modal */}
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-800">Información del Usuario</h2>
-                <button onClick={toggleModalUsuario} className="text-gray-500 hover:text-gray-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
-                    <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Contenido del modal */}
-              {currentUser && (
-                <div className="space-y-4">
-                  {/* Avatar del usuario */}
-                  <div className="flex justify-center mb-4">
-                    <div className="w-20 h-20 bg-gray-300 rounded-full flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-10 text-gray-600">
-                        <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Información del usuario */}
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{currentUser.tx_nombre}</h3>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p><strong>ID Usuario:</strong> {currentUser.id_usuario}</p>
-                      {currentUser.tx_email && (
-                        <p><strong>Email:</strong> {currentUser.tx_email}</p>
-                      )}
-                      {currentUser.tx_telefono && (
-                        <p><strong>Teléfono:</strong> {currentUser.tx_telefono}</p>
-                      )}
-                      {currentUser.tx_cargo && (
-                        <p><strong>Cargo:</strong> {currentUser.tx_cargo}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Estado de conexión */}
-                  <div className="flex items-center justify-center space-x-2 py-2">
-                    <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="text-sm text-gray-600">
-                      {isOnline ? 'Conectado' : 'Sin conexión'}
-                    </span>
-                  </div>
-
-                  {/* Botón de cerrar sesión */}
-                  <div className="pt-4 border-t">
-                    <button
-                      onClick={handleLogout}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-5">
-                        <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 0 0 6 5.25v13.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5V15a.75.75 0 0 1 1.5 0v3.75a3 3 0 0 1-3 3h-6a3 3 0 0 1-3-3V5.25a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3V9A.75.75 0 0 1 15 9V5.25a1.5 1.5 0 0 0-1.5-1.5h-6Zm10.72 4.72a.75.75 0 0 1 1.06 0l3 3a.75.75 0 0 1 0 1.06l-3 3a.75.75 0 1 1-1.06-1.06l1.72-1.72H9a.75.75 0 0 1 0-1.5h10.94l-1.72-1.72a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                      </svg>
-                      <span>Cerrar Sesión</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        
         {/* Modal clientes*/}
         <ModalClientes showClientes={showClientes} toggleClientes={toggleClientes} setClienteSel={() => {}}  onlyView={true}/>
         {/* fin del modal clientes */}

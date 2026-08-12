@@ -14,6 +14,7 @@ import { TourContextProvider } from './context/TourContext.jsx';
 import InfoProducto from './pages/external/InfoProducto.jsx';
 import ReporteEstados from './pages/ventaExterna/ReporteEstados.jsx';
 import CargaMasiva from './pages/ventaExterna/CargaMasiva.jsx';
+import RecibosCaja from './pages/ventaExterna/RecibosCaja.jsx';
 const root = document.getElementById('root');
 // Steps vacíos - se manejan desde el TourContext
 const initialSteps = [];
@@ -31,6 +32,7 @@ createRoot(root).render(
                       <Route path="/infoProducto/:bodega/:producto" element={<InfoProducto />} />
                       <Route path="/reporte-estados" element={<ReporteEstados />} />
                       <Route path="/carga-masiva" element={<CargaMasiva />} />
+                      <Route path="/recibos-caja" element={<RecibosCaja />} />
 
                     </Routes>
                 </BrowserRouter>

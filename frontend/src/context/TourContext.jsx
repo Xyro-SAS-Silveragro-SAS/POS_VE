@@ -28,11 +28,11 @@ const tourSteps = {
     },
     {
       selector: '.botonAgregaNueva',
-      content: 'Al presionar este botón se abrirá una nueva ventana para crear un nuevo pedido o cotización.',
+      content: 'Al presionar este botón se desplegarán opciones en las que permitirá crear un nuevo pedido o cotización, dependiendo de la opción que selecciones. También podrá hacer carga masiva, ver clientes y productos en forma de consulta.',
     },
     {
       selector: '.pestana1',
-      content: 'Aquí se mostrarán los pedidos que están en proceso o que ya están sincronizados a SAP.',
+      content: 'Aquí se mostrarán los pedidos que están en proceso o que ya están sincronizados a SAP. Inclusive si fueron cargados de manera masiva.',
     },
     {
       selector: '.pestana2',
