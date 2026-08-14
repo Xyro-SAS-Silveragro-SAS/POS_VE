@@ -18,4 +18,5 @@ export const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://
 export const N8N_CLIENTES_URL = import.meta.env.VITE_N8N_CLIENTES_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/clientesPosVe';
 export const N8N_CARGA_MASIVA_URL = import.meta.env.VITE_N8N_CARGA_MASIVA_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva';
 export const N8N_GET_FACTURAS_URL = import.meta.env.VITE_N8N_GET_FACTURAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturas';
+export const N8N_ITEMS_URL = import.meta.env.VITE_N8N_ITEMS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/222f2c15-71ec-4de3-b390-824d7e0783fc/itemsBodega';
 
