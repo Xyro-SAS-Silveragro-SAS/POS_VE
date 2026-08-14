@@ -1,4 +1,4 @@
-import { VERSION, N8N_CLIENTES_URL } from "../../config/config"
+import { VERSION, N8N_CLIENTES_URL, N8N_ITEMS_URL } from "../../config/config"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import api from "../../services/apiService"
@@ -229,19 +229,37 @@ const Login = () => {
     const getItems = async (bodega) => {
         try {
           setCargando(true)
-          // Consultar la API para obtener los items con timeout
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 segundos timeout para items (puede ser más pesado)
-          
-          const items = await api.get('api/inventario/bodega/'+bodega, { signal: controller.signal })
-          clearTimeout(timeoutId)
-          
-          if (items && items.datos && items.datos.length > 0) {
+
+          // Intentar primero con el nuevo endpoint de N8N (reemplaza temporalmente al endpoint original que presenta problemas)
+          let datos = null
+          try {
+            const n8nController = new AbortController()
+            const n8nTimeoutId = setTimeout(() => n8nController.abort(), 20000)
+            const n8nResponse = await fetch(`${N8N_ITEMS_URL}/${bodega}`, { signal: n8nController.signal })
+            clearTimeout(n8nTimeoutId)
+            const n8nText = await n8nResponse.text()
+            const n8nResult = n8nText ? JSON.parse(n8nText) : null
+            datos = Array.isArray(n8nResult) ? n8nResult : (n8nResult && n8nResult.datos) || null
+          } catch (n8nError) {
+            console.warn("Error al cargar items desde N8N, se intentará con el endpoint original:", n8nError)
+          }
+
+          // Fallback al endpoint original si el de N8N falla o no retorna datos
+          if (!datos || datos.length === 0) {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 segundos timeout para items (puede ser más pesado)
+
+            const items = await api.get('api/inventario/bodega/'+bodega, { signal: controller.signal })
+            clearTimeout(timeoutId)
+            datos = items && items.datos ? items.datos : null
+          }
+
+          if (datos && datos.length > 0) {
                 // Solo limpiar la tabla si tenemos datos válidos para reemplazar
                 await db.table('items').clear()
                 // Si el usuario tiene items, los guardamos
-                await db.items.bulkAdd(items.datos)
-                console.log(`Items actualizados: ${items.datos.length} registros`)
+                await db.items.bulkAdd(datos)
+                console.log(`Items actualizados: ${datos.length} registros`)
             } else {
                 console.warn("No se recibieron datos válidos de items o la respuesta está vacía")
                 // No limpiamos la tabla si no tenemos datos válidos

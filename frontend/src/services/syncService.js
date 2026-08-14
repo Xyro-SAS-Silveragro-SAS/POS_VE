@@ -1,6 +1,6 @@
 import api from './apiService.jsx';
 import { db } from '../db/db';
-import { N8N_CLIENTES_URL } from '../config/config';
+import { N8N_CLIENTES_URL, N8N_ITEMS_URL } from '../config/config';
 
 /**
  * Service for synchronizing data from API to IndexedDB
@@ -64,19 +64,33 @@ class SyncService {
   async syncItems(bodega, setLoading = null) {
     try {
       if (setLoading) setLoading(true);
-      
-      // Get items from API
-      const items = await api.get(`api/inventario/bodega/${bodega}`);
-      
-      if (items && items.datos && items.datos.length > 0) {
+
+      // Get items from N8N (nuevo endpoint, reemplaza temporalmente al endpoint original que presenta problemas)
+      let datos = null;
+      try {
+        const response = await fetch(`${N8N_ITEMS_URL}/${bodega}`);
+        const text = await response.text();
+        const n8nResult = text ? JSON.parse(text) : null;
+        datos = Array.isArray(n8nResult) ? n8nResult : (n8nResult && n8nResult.datos) || null;
+      } catch (n8nError) {
+        console.warn("Error al sincronizar productos desde N8N, se intentará con el endpoint original:", n8nError);
+      }
+
+      // Fallback al endpoint original si el de N8N falla o no retorna datos
+      if (!datos || datos.length === 0) {
+        const items = await api.get(`api/inventario/bodega/${bodega}`);
+        datos = items && items.datos ? items.datos : null;
+      }
+
+      if (datos && datos.length > 0) {
         // Clear existing items and add new ones
         await db.table('items').clear();
-        await db.items.bulkAdd(items.datos);
-        console.log(`Sincronizados ${items.datos.length} productos`);
+        await db.items.bulkAdd(datos);
+        console.log(`Sincronizados ${datos.length} productos`);
       } else {
         console.warn("No se encontraron productos para sincronizar");
       }
-      
+
       if (setLoading) setLoading(false);
       return true;
     } catch (error) {
