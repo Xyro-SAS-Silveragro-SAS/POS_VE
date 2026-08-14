@@ -43,6 +43,13 @@ const FilaPago = ({ pago, onUpdate, onRemove, canRemove }) => {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <input
             type="text"
+            value={pago.tx_banco}
+            onChange={(e) => onUpdate({ ...pago, tx_banco: e.target.value })}
+            placeholder="Código banco"
+            className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#546C4C]"
+          />
+          <input
+            type="text"
             value={pago.tx_nombco}
             onChange={(e) => onUpdate({ ...pago, tx_nombco: e.target.value })}
             placeholder="Banco"

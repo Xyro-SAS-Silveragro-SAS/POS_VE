@@ -82,12 +82,19 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
 
   const vlrPagoACuenta = Math.max(0, Math.round(totalPagos - totalAplicadoFacturas));
 
+  const pagoValido = (p) =>
+    p.tx_formpg === "EF" ||
+    (p.tx_banco?.trim() && p.tx_nombco?.trim() && p.tx_ctanro?.trim() && p.tx_referen?.trim());
+
   const puedeGuardar =
     clienteSel &&
     filas.length > 0 &&
+    filas.every((f) => calcularValorAPagar(f) > 0) &&
     totalAplicadoFacturas > 0 &&
     totalPagos > 0 &&
-    totalAplicadoFacturas <= totalPagos;
+    totalAplicadoFacturas <= totalPagos &&
+    pagos.length > 0 &&
+    pagos.every(pagoValido);
 
   const agregarPago = (tipo) => {
     const restante = Math.max(0, Math.round(totalAplicadoFacturas - totalPagos));
@@ -118,7 +125,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       return;
     }
     if (!puedeGuardar) {
-      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos una factura y que el valor recibido cubra el valor aplicado a las facturas.", "info");
+      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos una factura con valor a pagar mayor a cero, que el valor recibido cubra el valor aplicado a las facturas, y que los pagos con transferencia/tarjeta/cheque tengan banco, cuenta y referencia diligenciados.", "info");
       return;
     }
 
@@ -161,12 +168,12 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       pagos: pagos.map((p, idx) => ({
         id_linea: idx + 1,
         tx_formpg: p.tx_formpg,
-        tx_banco: p.tx_formpg === "EF" ? "00" : (p.tx_banco || ""),
-        tx_nombco: p.tx_formpg === "EF" ? "CAJA GENERAL" : (p.tx_nombco || ""),
-        tx_ctanro: p.tx_formpg === "EF" ? "0" : (p.tx_ctanro || ""),
+        tx_banco: p.tx_formpg === "EF" ? "00" : p.tx_banco.trim(),
+        tx_nombco: p.tx_formpg === "EF" ? "CAJA GENERAL" : p.tx_nombco.trim(),
+        tx_ctanro: p.tx_formpg === "EF" ? "0" : p.tx_ctanro.trim(),
         fe_venc: p.fe_venc,
         db_vlrpag: Number(p.db_vlrpag || 0),
-        tx_referen: p.tx_referen || null,
+        tx_referen: p.tx_formpg === "EF" ? "EFECTIVO" : p.tx_referen.trim(),
         tx_aprobado: p.tx_aprobado || null,
         tx_centralriesgo: null,
         tx_manejo: null,
