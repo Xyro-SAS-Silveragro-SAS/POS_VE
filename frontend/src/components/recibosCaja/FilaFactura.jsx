@@ -27,6 +27,8 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
     <div className="w-full rounded-lg border border-stone-200 bg-stone-100 px-2.5 py-2 text-sm text-stone-600">
       <span className="block font-semibold text-stone-700">{fila.tx_tipodoc} {fila.in_nrosap}</span>
       <span className="block text-[11px] text-stone-400">Vence: {fila.fe_fechaven || "N/A"}</span>
+      <span className="block text-[11px] text-stone-400">Entrega: {fila.fe_fechadespacho || "N/A"}</span>
+      <span className="block text-[11px] text-stone-400">Saldo: {currency(fila.db_saldo)}</span>
     </div>
   );
 
@@ -63,7 +65,7 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
 
         <div className="grid grid-cols-2 gap-2">
           <label className="rounded-lg border border-stone-200 bg-stone-100 px-3 py-2">
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-stone-400 mb-0.5">Saldo factura</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-stone-400 mb-0.5">Subtotal factura</span>
             <span className="block text-right text-sm text-stone-600">{currency(fila.db_saldofra)}</span>
           </label>
           <label className="flex items-center justify-between rounded-lg border border-stone-200 bg-white px-3 py-2">

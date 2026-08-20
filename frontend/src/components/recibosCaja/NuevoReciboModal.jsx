@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt } from "lucide-react";
+import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt, Camera, Upload, ImagePlus, Trash2 } from "lucide-react";
 import FilaFactura from "./FilaFactura";
 import FilaPago from "./FilaPago";
 import BuscarFacturasModal from "./BuscarFacturasModal";
@@ -13,7 +13,7 @@ import {
 import { db } from "../../db/db";
 import syncService from "../../services/syncService.js";
 import Funciones from "../../helpers/Funciones";
-import { API_MTS, TOKEN } from "../../config/config.jsx";
+import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL } from "../../config/config.jsx";
 
 const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [clienteQuery, setClienteQuery] = useState("");
@@ -28,10 +28,36 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [pagos, setPagos] = useState([]);
   const [observaciones, setObservaciones] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [cuentasEfectivo, setCuentasEfectivo] = useState([]);
+  const [cuentasBancos, setCuentasBancos] = useState([]);
+  const [tarjetas, setTarjetas] = useState([]);
+  const [bancos, setBancos] = useState([]);
+  const [comprobanteFile, setComprobanteFile] = useState(null);
+  const [comprobantePreview, setComprobantePreview] = useState(null);
 
   useEffect(() => {
     if (!open) return;
     db.clientes.toArray().then(setClientes);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(N8N_CUENTAS_EFECTIVO_URL)
+      .then((res) => res.json())
+      .then((data) => setCuentasEfectivo((data?.Mensaje?.dListado ?? []).filter((c) => String(c.Codigo) === "11051014")))
+      .catch((err) => console.error("Error al cargar cuentas de efectivo:", err));
+    fetch(N8N_CUENTAS_BANCOS_URL)
+      .then((res) => res.json())
+      .then((data) => setCuentasBancos(data?.Mensaje?.dListado ?? []))
+      .catch((err) => console.error("Error al cargar cuentas de bancos:", err));
+    fetch(N8N_TARJETAS_URL)
+      .then((res) => res.json())
+      .then((data) => setTarjetas(data?.Mensaje?.dListado ?? []))
+      .catch((err) => console.error("Error al cargar tarjetas:", err));
+    fetch(N8N_BANCOS_URL)
+      .then((res) => res.json())
+      .then((data) => setBancos(data?.Mensaje?.dListado ?? []))
+      .catch((err) => console.error("Error al cargar bancos:", err));
   }, [open]);
 
   const clientesFiltrados = useMemo(() => {
@@ -82,9 +108,26 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
 
   const vlrPagoACuenta = Math.max(0, Math.round(totalPagos - totalAplicadoFacturas));
 
-  const pagoValido = (p) =>
-    p.tx_formpg === "EF" ||
-    (p.tx_banco?.trim() && p.tx_nombco?.trim() && p.tx_ctanro?.trim() && p.tx_referen?.trim());
+  const hoyISO = new Date().toISOString().slice(0, 10);
+
+  const pagoValido = (p) => {
+    if (p.tx_formpg === "EF") return !!p.tx_banco?.trim();
+    if (p.tx_formpg === "CO") return !!(p.tx_banco?.trim() && p.fe_venc && p.tx_referen?.trim());
+    if (p.tx_formpg === "TC") return !!(p.tx_banco?.trim() && p.tx_ctanro?.trim() && p.fe_venc && p.fe_venc >= hoyISO && p.tx_referen?.trim());
+    if (p.tx_formpg === "CH")
+      return !!(
+        p.tx_ctaefec?.trim() &&
+        p.tx_banco?.trim() &&
+        p.tx_referen?.trim() &&
+        p.tx_ctanro?.trim() &&
+        p.tx_aprobado?.trim() &&
+        p.tx_centralriesgo?.trim() &&
+        p.tx_manejo &&
+        p.fe_venc &&
+        p.fe_venc >= hoyISO
+      );
+    return true;
+  };
 
   const puedeGuardar =
     clienteSel &&
@@ -96,7 +139,10 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     pagos.length > 0 &&
     pagos.every(pagoValido);
 
+  const tieneEfectivo = pagos.some((p) => p.tx_formpg === "EF");
+
   const agregarPago = (tipo) => {
+    if (tipo === "EF" && tieneEfectivo) return;
     const restante = Math.max(0, Math.round(totalAplicadoFacturas - totalPagos));
     setPagos((prev) => [...prev, { ...pagoVacio(tipo), db_vlrpag: restante }]);
   };
@@ -107,6 +153,21 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const eliminarPago = (idx) =>
     setPagos((prev) => prev.filter((_, i) => i !== idx));
 
+  const handleSeleccionarComprobante = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    setComprobanteFile(file);
+    setComprobantePreview(URL.createObjectURL(file));
+  };
+
+  const handleQuitarComprobante = () => {
+    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    setComprobanteFile(null);
+    setComprobantePreview(null);
+  };
+
   const resetAndClose = () => {
     setClienteQuery("");
     setClienteSel(null);
@@ -116,25 +177,23 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     setFilas([]);
     setPagos([]);
     setObservaciones("");
+    setCuentasEfectivo([]);
+    setCuentasBancos([]);
+    setTarjetas([]);
+    setBancos([]);
+    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
+    setComprobanteFile(null);
+    setComprobantePreview(null);
     onClose();
   };
 
-  const handleGuardar = async () => {
-    if (!usuario?.tx_usuario) {
-      Funciones.alerta("Atención", "No hay un usuario logueado válido", "error");
-      return;
-    }
-    if (!puedeGuardar) {
-      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos una factura con valor a pagar mayor a cero, que el valor recibido cubra el valor aplicado a las facturas, y que los pagos con transferencia/tarjeta/cheque tengan banco, cuenta y referencia diligenciados.", "info");
-      return;
-    }
-
+  const construirRecibo = () => {
     const ahora = new Date();
     const fecha = ahora.toISOString().slice(0, 10);
     const hora = ahora.toLocaleTimeString("en-GB");
     const sumaPorTipo = (tipo) => pagos.filter((p) => p.tx_formpg === tipo).reduce((s, p) => s + Number(p.db_vlrpag || 0), 0);
 
-    const recibo = {
+    return {
       tx_codsn: String(clienteSel.Codigo),
       tx_nomsn: clienteSel.Nombre,
       fe_fecha: fecha,
@@ -146,11 +205,11 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       db_totche: sumaPorTipo("CH"),
       db_vlrpgcta: vlrPagoACuenta,
       tx_coment: observaciones,
-      in_estado: 1,
+      in_estado: 4,
       in_nrosap: 0,
       in_clavesap: 0,
       tx_usuario: usuario.tx_usuario,
-      in_serie: 1,
+      in_serie: usuario.in_serie_oc,
       dt_fecha_reg_pag: fecha,
       facturas: filas.map((f, idx) => ({
         id_linea: idx + 1,
@@ -168,18 +227,42 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       pagos: pagos.map((p, idx) => ({
         id_linea: idx + 1,
         tx_formpg: p.tx_formpg,
-        tx_banco: p.tx_formpg === "EF" ? "00" : p.tx_banco.trim(),
-        tx_nombco: p.tx_formpg === "EF" ? "CAJA GENERAL" : p.tx_nombco.trim(),
-        tx_ctanro: p.tx_formpg === "EF" ? "0" : p.tx_ctanro.trim(),
+        tx_banco: p.tx_banco.trim(),
+        tx_nombco: p.tx_nombco.trim(),
+        tx_ctanro: p.tx_formpg === "EF" || p.tx_formpg === "CO" ? "0" : p.tx_ctanro.trim(),
+        tx_ctaefec: p.tx_ctaefec?.trim() || null,
+        tx_nomctaefec: p.tx_nomctaefec?.trim() || null,
         fe_venc: p.fe_venc,
         db_vlrpag: Number(p.db_vlrpag || 0),
         tx_referen: p.tx_formpg === "EF" ? "EFECTIVO" : p.tx_referen.trim(),
-        tx_aprobado: p.tx_aprobado || null,
-        tx_centralriesgo: null,
-        tx_manejo: null,
+        tx_aprobado: p.tx_aprobado?.trim() || null,
+        tx_centralriesgo: p.tx_centralriesgo?.trim() || null,
+        tx_manejo: p.tx_manejo || null,
         tx_usuario: usuario.tx_usuario,
       })),
     };
+  };
+
+  // TEMPORAL: solo para depuración, quitar este botón y handler cuando ya no se necesite.
+  const handleVerPayload = () => {
+    if (!clienteSel) {
+      Funciones.alerta("Atención", "Selecciona un cliente para poder armar el payload", "info");
+      return;
+    }
+    console.log("Payload recibo de caja:", construirRecibo());
+  };
+
+  const handleGuardar = async () => {
+    if (!usuario?.tx_usuario) {
+      Funciones.alerta("Atención", "No hay un usuario logueado válido", "error");
+      return;
+    }
+    if (!puedeGuardar) {
+      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos una factura con valor a pagar mayor a cero, que el valor recibido cubra el valor aplicado a las facturas, que los pagos en efectivo tengan una cuenta seleccionada, que los pagos por consignación tengan banco, fecha y referencia, que los pagos con tarjeta tengan tarjeta, número, una fecha de vencimiento válida (no vencida) y voucher, y que los pagos con cheque tengan cuenta, banco, número de cheque, cuenta cheque, aprobado, central de riesgo, manejo y una fecha de vencimiento válida (no vencida).", "info");
+      return;
+    }
+
+    const recibo = construirRecibo();
 
     setGuardando(true);
     try {
@@ -281,6 +364,9 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
                 <span><span className="font-semibold">Código:</span> {clienteSel.Codigo}</span>
                 <span><span className="font-semibold">Saldo:</span> {currency(clienteSel.Saldo)}</span>
                 <span><span className="font-semibold">Saldo vencido:</span> {currency(clienteSel.SaldoVencido)}</span>
+                <span><span className="font-semibold">Saldo a favor:</span> {currency(clienteSel.SaldoFavor)}</span>
+                <span><span className="font-semibold">Condición pago:</span> {clienteSel.CondicionPago}</span>
+                <span><span className="font-semibold">Asesor:</span> {clienteSel.EmpleadoVentas}</span>
               </div>
             )}
           </section>
@@ -315,7 +401,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
               ) : (
                 <>
                   <div className="mb-1 hidden md:grid md:grid-cols-[1.4fr_minmax(0,110px)_minmax(0,64px)_minmax(0,90px)_minmax(0,120px)_32px] gap-1.5 px-0.5">
-                    {["Factura", "Saldo", "Parcial", "Desc. %", "Valor a pagar"].map((h) => (
+                    {["Factura", "Subtotal", "Parcial", "Desc. %", "Valor a pagar"].map((h) => (
                       <span key={h} className="text-center text-[10px] font-semibold uppercase tracking-wide text-stone-400">{h}</span>
                     ))}
                     <span />
@@ -338,13 +424,21 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
           {/* Medios de pago */}
           {clienteSel && (
             <section>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-500">Medios de pago</h3>
-                <div className="flex items-center gap-1.5">
-                  <button type="button" onClick={() => agregarPago("EF")} title="Efectivo" className="rounded-lg bg-[#546C4C]/10 p-1.5 text-[#546C4C] hover:bg-[#546C4C]/20"><Banknote size={14} /></button>
-                  <button type="button" onClick={() => agregarPago("CO")} title="Transferencia" className="rounded-lg bg-[#546C4C]/10 p-1.5 text-[#546C4C] hover:bg-[#546C4C]/20"><ArrowLeftRight size={14} /></button>
-                  <button type="button" onClick={() => agregarPago("TC")} title="Tarjeta" className="rounded-lg bg-[#546C4C]/10 p-1.5 text-[#546C4C] hover:bg-[#546C4C]/20"><CreditCard size={14} /></button>
-                  <button type="button" onClick={() => agregarPago("CH")} title="Cheque" className="rounded-lg bg-[#546C4C]/10 p-1.5 text-[#546C4C] hover:bg-[#546C4C]/20"><Landmark size={14} /></button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => agregarPago("EF")}
+                    disabled={tieneEfectivo}
+                    title={tieneEfectivo ? "Ya agregaste un pago en efectivo" : undefined}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#546C4C]/10"
+                  >
+                    <Banknote size={14} /> Efectivo
+                  </button>
+                  <button type="button" onClick={() => agregarPago("CO")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><ArrowLeftRight size={14} /> Consignación</button>
+                  <button type="button" onClick={() => agregarPago("TC")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><CreditCard size={14} /> Tarjeta</button>
+                  <button type="button" onClick={() => agregarPago("CH")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><Landmark size={14} /> Cheque</button>
                 </div>
               </div>
 
@@ -355,7 +449,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
               ) : (
                 <div className="space-y-2">
                   {pagos.map((pago, idx) => (
-                    <FilaPago key={pago._key} pago={pago} onUpdate={(data) => actualizarPago(idx, data)} onRemove={() => eliminarPago(idx)} canRemove={pagos.length > 0} />
+                    <FilaPago key={pago._key} pago={pago} onUpdate={(data) => actualizarPago(idx, data)} onRemove={() => eliminarPago(idx)} canRemove={pagos.length > 0} cuentasEfectivo={cuentasEfectivo} cuentasBancos={cuentasBancos} tarjetas={tarjetas} bancos={bancos} />
                   ))}
                 </div>
               )}
@@ -385,10 +479,66 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
               />
             </section>
           )}
+
+          {/* Comprobante de pago (foto) — solo maqueta, no se envía en el payload aún */}
+          {clienteSel && (
+            <section>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Comprobante de pago</h3>
+              <div className="rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-4">
+                {comprobantePreview ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={comprobantePreview}
+                      alt="Comprobante de pago"
+                      className="h-20 w-20 shrink-0 rounded-lg border border-stone-200 object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-stone-700">{comprobanteFile?.name}</p>
+                      <p className="text-xs text-stone-400">{((comprobanteFile?.size || 0) / 1024).toFixed(0)} KB</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleQuitarComprobante}
+                      title="Quitar imagen"
+                      className="flex items-center justify-center rounded-lg p-2 text-stone-300 transition hover:bg-red-50 hover:text-red-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-2 text-center">
+                    <ImagePlus size={26} className="text-stone-300" />
+                    <p className="text-xs text-stone-400">Adjunta una foto del comprobante de pago (opcional)</p>
+                    <div className="mt-1 flex flex-wrap justify-center gap-2">
+                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-3 py-1.5 text-xs font-semibold text-[#546C4C] transition hover:bg-[#546C4C]/20">
+                        <Camera size={14} strokeWidth={2.5} />
+                        Tomar foto
+                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleSeleccionarComprobante} />
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-stone-200/60 px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:bg-stone-200">
+                        <Upload size={14} strokeWidth={2.5} />
+                        Subir del dispositivo
+                        <input type="file" accept="image/*" className="hidden" onChange={handleSeleccionarComprobante} />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-stone-400">* Por ahora esta imagen no se envía junto con el recibo.</p>
+            </section>
+          )}
         </div>
 
         {/* Pie */}
         <div className="flex gap-3 border-t border-stone-100 bg-white px-5 py-4">
+          {/* TEMPORAL: quitar este botón cuando ya no se necesite ver el payload en consola */}
+          <button
+            type="button"
+            onClick={handleVerPayload}
+            className="rounded-xl border border-dashed border-stone-300 px-3 py-3 text-sm font-semibold text-stone-500 transition hover:bg-stone-50"
+          >
+            Ver payload
+          </button>
           <button onClick={resetAndClose} className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-semibold text-stone-600 transition hover:bg-stone-50">
             Cancelar
           </button>

@@ -5,13 +5,38 @@ import NuevoReciboModal from "../../components/recibosCaja/NuevoReciboModal";
 import { currency } from "../../components/recibosCaja/utilsRecibos";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/apiService";
-import { Plus, Search, Receipt, FileText, Banknote, ArrowLeftRight, CreditCard, Landmark } from "lucide-react";
+import { Plus, Search, Receipt, Banknote, ArrowLeftRight, CreditCard, Landmark, ChevronLeft, ChevronRight } from "lucide-react";
 
 const MEDIOS_ICONOS = {
   db_totefe: { label: "Efectivo", icon: Banknote },
-  db_totcon: { label: "Transferencia", icon: ArrowLeftRight },
+  db_totcon: { label: "Consignación", icon: ArrowLeftRight },
   db_tottc: { label: "Tarjeta", icon: CreditCard },
   db_totche: { label: "Cheque", icon: Landmark },
+};
+
+const RECIBOS_POR_PAGINA = 10;
+
+const formatFecha = (valor) => {
+  if (!valor) return "";
+  const [anio, mes, dia] = String(valor).slice(0, 10).split("-");
+  return `${dia}/${mes}/${anio}`;
+};
+
+const ESTADOS_RECIBO = {
+  1: { label: "Creado", clase: "bg-blue-100 text-blue-700" },
+  2: { label: "Sincronizado", clase: "bg-green-100 text-green-700" },
+  3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
+  4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
+  5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
+};
+
+const estadoRecibo = (r) =>
+  ESTADOS_RECIBO[Number(r.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
+
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+const inicioMesISO = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
 };
 
 const RecibosCaja = () => {
@@ -22,6 +47,9 @@ const RecibosCaja = () => {
   const [busqueda, setBusqueda] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [reciboVersion, setReciboVersion] = useState(0);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [feInicio, setFeInicio] = useState(inicioMesISO());
+  const [feFin, setFeFin] = useState(hoyISO());
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -30,11 +58,15 @@ const RecibosCaja = () => {
   }, [isLoading, isAuthenticated, navigate]);
 
   const cargarRecibos = useCallback(async () => {
-    if (!currentUser?.tx_usuario) return;
+    if (!currentUser?.tx_usuario || !feInicio || !feFin) return;
     setCargando(true);
     try {
-      const data = await api.get("api/cartera/recibos-caja", { tx_usuario: currentUser.tx_usuario });
-      const lista = Array.isArray(data) ? data : (data?.datos || data?.recibos || []);
+      const data = await api.get("api/cartera/recibos-caja/consulta", {
+        tx_usuario: currentUser.tx_usuario,
+        fe_inicio: feInicio,
+        fe_fin: feFin,
+      });
+      const lista = Array.isArray(data) ? data : (data?.data || data?.datos || data?.recibos || []);
       setRecibos(Array.isArray(lista) ? lista : []);
     } catch (err) {
       console.error("Error al consultar los recibos de caja:", err);
@@ -42,7 +74,7 @@ const RecibosCaja = () => {
     } finally {
       setCargando(false);
     }
-  }, [currentUser]);
+  }, [currentUser, feInicio, feFin]);
 
   useEffect(() => {
     cargarRecibos();
@@ -53,6 +85,16 @@ const RecibosCaja = () => {
     const q = busqueda.trim().toLowerCase();
     return (r.tx_nomsn || "").toLowerCase().includes(q) || String(r.tx_codsn || "").toLowerCase().includes(q);
   });
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, recibos]);
+
+  const totalPaginas = Math.max(1, Math.ceil(recibosFiltrados.length / RECIBOS_POR_PAGINA));
+  const recibosPagina = recibosFiltrados.slice(
+    (paginaActual - 1) * RECIBOS_POR_PAGINA,
+    paginaActual * RECIBOS_POR_PAGINA
+  );
 
   const badgesMedios = (recibo) =>
     Object.entries(MEDIOS_ICONOS)
@@ -84,8 +126,8 @@ const RecibosCaja = () => {
             </button>
           </div>
 
-          {/* Buscador */}
-          <div className="mb-4 bg-white rounded-lg shadow-md p-4">
+          {/* Buscador y filtros de fecha */}
+          <div className="mb-4 bg-white rounded-lg shadow-md p-4 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
@@ -95,6 +137,28 @@ const RecibosCaja = () => {
                 placeholder="Buscar por cliente o código..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#546C4C]"
               />
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 text-xs font-semibold text-gray-500">
+                Fecha inicial
+                <input
+                  type="date"
+                  value={feInicio}
+                  max={feFin || undefined}
+                  onChange={(e) => setFeInicio(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:border-[#546C4C]"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-gray-500">
+                Fecha final
+                <input
+                  type="date"
+                  value={feFin}
+                  min={feInicio || undefined}
+                  onChange={(e) => setFeFin(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:border-[#546C4C]"
+                />
+              </label>
             </div>
           </div>
 
@@ -115,25 +179,28 @@ const RecibosCaja = () => {
                       <tr>
                         <th className="px-4 py-3 text-left">Cliente</th>
                         <th className="px-4 py-3 text-left">Fecha</th>
-                        <th className="px-4 py-3 text-center">Facturas</th>
+                        <th className="px-4 py-3 text-center">Estado</th>
                         <th className="px-4 py-3 text-left">Medios de pago</th>
                         <th className="px-4 py-3 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {recibosFiltrados.map((r, index) => (
+                      {recibosPagina.map((r, index) => (
                         <tr key={r.id_nrorc ?? index} className={`border-b ${index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-gray-100`}>
                           <td className="px-4 py-3">
                             <span className="block font-semibold text-gray-800">{r.tx_nomsn}</span>
                             <span className="block text-xs text-gray-400">{r.tx_codsn}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="block">{r.fe_fecha}</span>
+                            <span className="block">{formatFecha(r.fe_fecha)}</span>
                             <span className="block text-xs text-gray-400">{r.fe_hora}</span>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className="inline-flex items-center gap-1 text-gray-600">
-                              <FileText size={14} /> {r.facturas?.length ?? 0}
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${estadoRecibo(r).clase}`}
+                              title={r.tx_motivo_anula || ""}
+                            >
+                              {estadoRecibo(r).label}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -149,7 +216,7 @@ const RecibosCaja = () => {
 
               {/* Móvil: cards */}
               <div className="md:hidden space-y-3">
-                {recibosFiltrados.map((r, index) => (
+                {recibosPagina.map((r, index) => (
                   <div key={r.id_nrorc ?? index} className="bg-white rounded-lg shadow-md p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -159,15 +226,43 @@ const RecibosCaja = () => {
                       <p className="text-lg font-bold text-[#546C4C]">{currency(r.db_total)}</p>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                      <span>{r.fe_fecha} · {r.fe_hora}</span>
-                      <span className="inline-flex items-center gap-1">
-                        <FileText size={13} /> {r.facturas?.length ?? 0} factura(s)
+                      <span>{formatFecha(r.fe_fecha)} · {r.fe_hora}</span>
+                      <span
+                        className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${estadoRecibo(r).clase}`}
+                        title={r.tx_motivo_anula || ""}
+                      >
+                        {estadoRecibo(r).label}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1">{badgesMedios(r)}</div>
                   </div>
                 ))}
               </div>
+
+              {/* Paginación */}
+              {totalPaginas > 1 && (
+                <div className="mt-4 flex items-center justify-between bg-white rounded-lg shadow-md px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                    disabled={paginaActual === 1}
+                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={16} /> Anterior
+                  </button>
+                  <span className="text-xs font-medium text-gray-500">
+                    Página {paginaActual} de {totalPaginas} · {recibosFiltrados.length} recibo{recibosFiltrados.length !== 1 ? "s" : ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                    disabled={paginaActual === totalPaginas}
+                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Siguiente <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
