@@ -23,4 +23,6 @@ export const N8N_CUENTAS_EFECTIVO_URL = import.meta.env.VITE_N8N_CUENTAS_EFECTIV
 export const N8N_CUENTAS_BANCOS_URL = import.meta.env.VITE_N8N_CUENTAS_BANCOS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/cuentasbancos';
 export const N8N_TARJETAS_URL = import.meta.env.VITE_N8N_TARJETAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/tarjetas';
 export const N8N_BANCOS_URL = import.meta.env.VITE_N8N_BANCOS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/bancos';
+export const UPLOAD_FILE_URL = import.meta.env.VITE_UPLOAD_FILE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles';
+export const ARCHIVOS_BASE_URL = import.meta.env.VITE_ARCHIVOS_BASE_URL || 'http://72.61.3.141:3030';
 

@@ -159,7 +159,9 @@ const Home = () => {
     return procesosFiltrados.filter((proceso) => {
       const nombre = (proceso.tx_nom_sn_nombre || '').toLowerCase()
       const codigoSap = String(proceso.DocNum || '').toLowerCase()
-      return nombre.includes(termino) || codigoSap.includes(termino)
+      const comentario = (proceso.tx_comentarios || '').toLowerCase()
+      const observaciones = (proceso.observaciones || '').toLowerCase()
+      return nombre.includes(termino) || codigoSap.includes(termino) || comentario.includes(termino) || observaciones.includes(termino)
     })
   })()
 

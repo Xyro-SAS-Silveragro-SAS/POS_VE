@@ -1,7 +1,7 @@
 export const currency = (valor) =>
   `$${new Intl.NumberFormat("es-CO").format(Math.round(Number(valor) || 0))}`;
 
-export const DESCUENTOS = [0, 3, 4, 5, 7.85];
+export const DESCUENTOS = [3, 4, 5, 7.85];
 
 export const MEDIOS_PAGO = [
   { codigo: "EF", label: "Efectivo" },

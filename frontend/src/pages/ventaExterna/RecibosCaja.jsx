@@ -2,10 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import TopBar from "../../components/global/TopBar";
 import NuevoReciboModal from "../../components/recibosCaja/NuevoReciboModal";
+import VerReciboModal from "../../components/recibosCaja/VerReciboModal";
 import { currency } from "../../components/recibosCaja/utilsRecibos";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/apiService";
-import { Plus, Search, Receipt, Banknote, ArrowLeftRight, CreditCard, Landmark, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Receipt, Banknote, ArrowLeftRight, CreditCard, Landmark, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 
 const MEDIOS_ICONOS = {
   db_totefe: { label: "Efectivo", icon: Banknote },
@@ -46,6 +47,7 @@ const RecibosCaja = () => {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [reciboVerId, setReciboVerId] = useState(null);
   const [reciboVersion, setReciboVersion] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
   const [feInicio, setFeInicio] = useState(inicioMesISO());
@@ -83,7 +85,11 @@ const RecibosCaja = () => {
   const recibosFiltrados = recibos.filter((r) => {
     if (!busqueda.trim()) return true;
     const q = busqueda.trim().toLowerCase();
-    return (r.tx_nomsn || "").toLowerCase().includes(q) || String(r.tx_codsn || "").toLowerCase().includes(q);
+    return (
+      (r.tx_nomsn || "").toLowerCase().includes(q) ||
+      String(r.tx_codsn || "").toLowerCase().includes(q) ||
+      (r.tx_coment || "").toLowerCase().includes(q)
+    );
   });
 
   useEffect(() => {
@@ -134,7 +140,7 @@ const RecibosCaja = () => {
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por cliente o código..."
+                placeholder="Buscar por cliente, código u observaciones..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#546C4C]"
               />
             </div>
@@ -182,6 +188,7 @@ const RecibosCaja = () => {
                         <th className="px-4 py-3 text-center">Estado</th>
                         <th className="px-4 py-3 text-left">Medios de pago</th>
                         <th className="px-4 py-3 text-right">Total</th>
+                        <th className="px-4 py-3 text-center">Ver</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -207,6 +214,16 @@ const RecibosCaja = () => {
                             <div className="flex flex-wrap gap-1">{badgesMedios(r)}</div>
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-gray-800">{currency(r.db_total)}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setReciboVerId(r.id_nrorc)}
+                              title="Ver recibo"
+                              className="inline-flex items-center justify-center rounded-lg p-1.5 text-[#546C4C] hover:bg-[#546C4C]/10"
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -234,7 +251,16 @@ const RecibosCaja = () => {
                         {estadoRecibo(r).label}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-1">{badgesMedios(r)}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap gap-1">{badgesMedios(r)}</div>
+                      <button
+                        type="button"
+                        onClick={() => setReciboVerId(r.id_nrorc)}
+                        className="flex shrink-0 items-center gap-1 rounded-lg bg-[#546C4C]/10 px-2.5 py-1 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"
+                      >
+                        <Eye size={13} /> Ver
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -282,6 +308,12 @@ const RecibosCaja = () => {
         onClose={() => setModalOpen(false)}
         onReciboCreado={() => setReciboVersion((v) => v + 1)}
         usuario={currentUser}
+      />
+
+      <VerReciboModal
+        open={reciboVerId != null}
+        onClose={() => setReciboVerId(null)}
+        idNrorc={reciboVerId}
       />
     </>
   );

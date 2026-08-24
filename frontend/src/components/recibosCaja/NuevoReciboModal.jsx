@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt, Camera, Upload, ImagePlus, Trash2 } from "lucide-react";
+import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt, Camera, Upload, ImagePlus, Trash2, FileText } from "lucide-react";
 import FilaFactura from "./FilaFactura";
 import FilaPago from "./FilaPago";
 import BuscarFacturasModal from "./BuscarFacturasModal";
@@ -13,7 +13,9 @@ import {
 import { db } from "../../db/db";
 import syncService from "../../services/syncService.js";
 import Funciones from "../../helpers/Funciones";
-import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL } from "../../config/config.jsx";
+import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL } from "../../config/config.jsx";
+
+const MAX_COMPROBANTE_MB = 5;
 
 const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [clienteQuery, setClienteQuery] = useState("");
@@ -34,6 +36,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [bancos, setBancos] = useState([]);
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [comprobantePreview, setComprobantePreview] = useState(null);
+  const [subiendoComprobante, setSubiendoComprobante] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -157,6 +160,10 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (file.size > MAX_COMPROBANTE_MB * 1024 * 1024) {
+      Funciones.alerta("Atención", `El archivo supera el tamaño máximo permitido de ${MAX_COMPROBANTE_MB}MB.`, "info");
+      return;
+    }
     if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
     setComprobanteFile(file);
     setComprobantePreview(URL.createObjectURL(file));
@@ -187,7 +194,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     onClose();
   };
 
-  const construirRecibo = () => {
+  const construirRecibo = (txImagen) => {
     const ahora = new Date();
     const fecha = ahora.toISOString().slice(0, 10);
     const hora = ahora.toLocaleTimeString("en-GB");
@@ -205,6 +212,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       db_totche: sumaPorTipo("CH"),
       db_vlrpgcta: vlrPagoACuenta,
       tx_coment: observaciones,
+      tx_imagen: txImagen || "",
       in_estado: 4,
       in_nrosap: 0,
       in_clavesap: 0,
@@ -229,7 +237,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
         tx_formpg: p.tx_formpg,
         tx_banco: p.tx_banco.trim(),
         tx_nombco: p.tx_nombco.trim(),
-        tx_ctanro: p.tx_formpg === "EF" || p.tx_formpg === "CO" ? "0" : p.tx_ctanro.trim(),
+        tx_ctanro: p.tx_formpg === "EF" ? p.tx_banco.trim() : p.tx_formpg === "CO" ? "0" : p.tx_ctanro.trim(),
         tx_ctaefec: p.tx_ctaefec?.trim() || null,
         tx_nomctaefec: p.tx_nomctaefec?.trim() || null,
         fe_venc: p.fe_venc,
@@ -252,6 +260,21 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     console.log("Payload recibo de caja:", construirRecibo());
   };
 
+  const subirComprobante = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("carpeta", "recibosCaja");
+
+    const response = await fetch(UPLOAD_FILE_URL, { method: "POST", body: formData });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.message || data?.error || "No se pudo subir el comprobante de pago.");
+    }
+
+    return `${data.folder}/${data.fileName}`;
+  };
+
   const handleGuardar = async () => {
     if (!usuario?.tx_usuario) {
       Funciones.alerta("Atención", "No hay un usuario logueado válido", "error");
@@ -262,10 +285,24 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       return;
     }
 
-    const recibo = construirRecibo();
-
     setGuardando(true);
     try {
+      let txImagen = "";
+      if (comprobanteFile) {
+        setSubiendoComprobante(true);
+        try {
+          txImagen = await subirComprobante(comprobanteFile);
+        } catch (err) {
+          console.error("Error al subir el comprobante de pago:", err);
+          Funciones.alerta("Error", err.message || "No se pudo subir el comprobante de pago. El recibo no fue enviado.", "error");
+          return;
+        } finally {
+          setSubiendoComprobante(false);
+        }
+      }
+
+      const recibo = construirRecibo(txImagen);
+
       const response = await fetch(`${API_MTS}api/cartera/recibos-caja`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${TOKEN}` },
@@ -487,11 +524,17 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
               <div className="rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-4">
                 {comprobantePreview ? (
                   <div className="flex items-center gap-3">
-                    <img
-                      src={comprobantePreview}
-                      alt="Comprobante de pago"
-                      className="h-20 w-20 shrink-0 rounded-lg border border-stone-200 object-cover"
-                    />
+                    {comprobanteFile?.type === "application/pdf" ? (
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
+                        <FileText size={28} className="text-stone-400" />
+                      </div>
+                    ) : (
+                      <img
+                        src={comprobantePreview}
+                        alt="Comprobante de pago"
+                        className="h-20 w-20 shrink-0 rounded-lg border border-stone-200 object-cover"
+                      />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-stone-700">{comprobanteFile?.name}</p>
                       <p className="text-xs text-stone-400">{((comprobanteFile?.size || 0) / 1024).toFixed(0)} KB</p>
@@ -508,7 +551,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
                 ) : (
                   <div className="flex flex-col items-center gap-2 py-2 text-center">
                     <ImagePlus size={26} className="text-stone-300" />
-                    <p className="text-xs text-stone-400">Adjunta una foto del comprobante de pago (opcional)</p>
+                    <p className="text-xs text-stone-400">Adjunta una foto o un PDF del comprobante de pago (opcional)</p>
                     <div className="mt-1 flex flex-wrap justify-center gap-2">
                       <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-3 py-1.5 text-xs font-semibold text-[#546C4C] transition hover:bg-[#546C4C]/20">
                         <Camera size={14} strokeWidth={2.5} />
@@ -518,13 +561,13 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
                       <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-stone-200/60 px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:bg-stone-200">
                         <Upload size={14} strokeWidth={2.5} />
                         Subir del dispositivo
-                        <input type="file" accept="image/*" className="hidden" onChange={handleSeleccionarComprobante} />
+                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleSeleccionarComprobante} />
                       </label>
                     </div>
                   </div>
                 )}
               </div>
-              <p className="mt-1 text-[11px] text-stone-400">* Por ahora esta imagen no se envía junto con el recibo.</p>
+              <p className="mt-1 text-[11px] text-stone-400">* Tamaño máximo {MAX_COMPROBANTE_MB}MB. Se sube al guardar el recibo.</p>
             </section>
           )}
         </div>
@@ -547,7 +590,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
             disabled={!puedeGuardar || guardando}
             className="flex-1 rounded-xl bg-[#D98C2B] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#c07d24] disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
           >
-            {guardando ? "Guardando..." : "Guardar recibo de caja"}
+            {subiendoComprobante ? "Subiendo comprobante..." : guardando ? "Guardando..." : "Guardar recibo de caja"}
           </button>
         </div>
       </div>

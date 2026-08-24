@@ -42,8 +42,9 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
       disabled={fila.esParcial}
       className={`w-full bg-transparent text-sm outline-none text-right ${className} disabled:cursor-not-allowed disabled:text-stone-400`}
     >
+      <option value="">Sin descuento</option>
       {DESCUENTOS.map((d) => (
-        <option key={d} value={d}>{d}%</option>
+        <option key={d} value={d}>{d === 0 ? "Sin descuento" : `${d}%`}</option>
       ))}
     </select>
   );

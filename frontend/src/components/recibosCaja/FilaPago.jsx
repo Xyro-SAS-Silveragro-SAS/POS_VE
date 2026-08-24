@@ -19,9 +19,16 @@ const FilaPago = ({ pago, onUpdate, onRemove, canRemove, cuentasEfectivo = [], c
     onUpdate({ ...pago, tx_banco: codigo, tx_nombco: cuenta?.Nombre || "" });
   };
 
+  const obtenerTipoTarjeta = (nombre) => {
+    const upper = (nombre || "").toUpperCase();
+    if (upper.startsWith("VISA")) return "VISA";
+    if (upper.startsWith("MASTERCARD")) return "MASTERCARD";
+    return nombre || "";
+  };
+
   const handleSeleccionarTarjeta = (codigo) => {
     const tarjeta = tarjetas.find((t) => String(t.Codigo) === codigo);
-    onUpdate({ ...pago, tx_banco: tarjeta?.Cuenta || "", tx_nombco: tarjeta?.Nombre || "" });
+    onUpdate({ ...pago, tx_banco: codigo, tx_nombco: obtenerTipoTarjeta(tarjeta?.Nombre) });
   };
 
   const handleSeleccionarCuentaCheque = (codigo) => {
@@ -103,7 +110,7 @@ const FilaPago = ({ pago, onUpdate, onRemove, canRemove, cuentasEfectivo = [], c
       {pago.tx_formpg === "TC" && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <select
-            value={tarjetas.find((t) => t.Nombre === pago.tx_nombco)?.Codigo ?? ""}
+            value={pago.tx_banco}
             onChange={(e) => handleSeleccionarTarjeta(e.target.value)}
             className="col-span-2 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#546C4C] sm:col-span-1"
           >
