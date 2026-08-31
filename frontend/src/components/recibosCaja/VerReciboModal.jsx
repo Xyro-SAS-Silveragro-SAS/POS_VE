@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, FileText, Image as ImageIcon, Receipt, ExternalLink } from "lucide-react";
 import { currency, MEDIOS_PAGO, MANEJOS_CHEQUE } from "./utilsRecibos";
-import { ARCHIVOS_BASE_URL } from "../../config/config.jsx";
+import { ARCHIVOS_BASE_URL, CARPETA_ARCHIVO } from "../../config/config.jsx";
 import api from "../../services/apiService";
 
 const ESTADOS_RECIBO = {
@@ -52,7 +52,7 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
   if (!open) return null;
 
   const estado = ESTADOS_RECIBO[Number(recibo?.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
-  const urlImagen = recibo?.tx_imagen ? `${ARCHIVOS_BASE_URL}/${recibo.tx_imagen}` : null;
+  const urlImagen = recibo?.tx_imagen ? `${ARCHIVOS_BASE_URL}/${CARPETA_ARCHIVO}/${recibo.tx_imagen}` : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4">

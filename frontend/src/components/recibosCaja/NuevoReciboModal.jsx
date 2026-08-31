@@ -13,9 +13,12 @@ import {
 import { db } from "../../db/db";
 import syncService from "../../services/syncService.js";
 import Funciones from "../../helpers/Funciones";
-import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL } from "../../config/config.jsx";
+import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL, CARPETA_ARCHIVO } from "../../config/config.jsx";
 
 const MAX_COMPROBANTE_MB = 5;
+
+// Se oculta temporalmente la opción de agregar pagos con cheque.
+const MOSTRAR_OPCION_CHEQUE = false;
 
 const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [clienteQuery, setClienteQuery] = useState("");
@@ -263,7 +266,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const subirComprobante = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("carpeta", "recibosCaja");
+    formData.append("carpeta", CARPETA_ARCHIVO);
 
     const response = await fetch(UPLOAD_FILE_URL, { method: "POST", body: formData });
     const data = await response.json().catch(() => ({}));
@@ -272,7 +275,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       throw new Error(data?.message || data?.error || "No se pudo subir el comprobante de pago.");
     }
 
-    return `${data.folder}/${data.fileName}`;
+    return data.fileName;
   };
 
   const handleGuardar = async () => {
@@ -475,7 +478,9 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
                   </button>
                   <button type="button" onClick={() => agregarPago("CO")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><ArrowLeftRight size={14} /> Consignación</button>
                   <button type="button" onClick={() => agregarPago("TC")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><CreditCard size={14} /> Tarjeta</button>
-                  <button type="button" onClick={() => agregarPago("CH")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><Landmark size={14} /> Cheque</button>
+                  {MOSTRAR_OPCION_CHEQUE && (
+                    <button type="button" onClick={() => agregarPago("CH")} className="flex items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-2.5 py-1.5 text-xs font-semibold text-[#546C4C] hover:bg-[#546C4C]/20"><Landmark size={14} /> Cheque</button>
+                  )}
                 </div>
               </div>
 

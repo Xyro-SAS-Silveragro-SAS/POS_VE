@@ -2,6 +2,9 @@ import { Trash2 } from "lucide-react";
 import NumInput from "./NumInput";
 import { currency, calcularValorAPagar, DESCUENTOS } from "./utilsRecibos";
 
+// Se ocultan temporalmente los demás porcentajes de descuento, solo se deja disponible el 3%.
+const DESCUENTOS_VISIBLES = DESCUENTOS.filter((d) => d === 3);
+
 const FilaFactura = ({ fila, onUpdate, onRemove }) => {
   const neto = calcularValorAPagar(fila);
 
@@ -43,7 +46,7 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
       className={`w-full bg-transparent text-sm outline-none text-right ${className} disabled:cursor-not-allowed disabled:text-stone-400`}
     >
       <option value="">Sin descuento</option>
-      {DESCUENTOS.map((d) => (
+      {DESCUENTOS_VISIBLES.map((d) => (
         <option key={d} value={d}>{d === 0 ? "Sin descuento" : `${d}%`}</option>
       ))}
     </select>
