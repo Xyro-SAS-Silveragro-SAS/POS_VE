@@ -222,6 +222,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       tx_usuario: usuario.tx_usuario,
       in_serie: usuario.in_serie_oc,
       dt_fecha_reg_pag: fecha,
+      tx_origen: "NORA",
       facturas: filas.map((f, idx) => ({
         id_linea: idx + 1,
         tx_tipodoc: f.tx_tipodoc,
