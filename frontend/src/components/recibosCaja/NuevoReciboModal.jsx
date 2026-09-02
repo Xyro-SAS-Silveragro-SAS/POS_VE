@@ -235,6 +235,8 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
         db_vlrdto: f.esParcial ? 0 : calcularDescuentoFactura(f),
         db_prcdto: f.esParcial ? 0 : f.db_prcdto,
         tx_usuario: usuario.tx_usuario,
+        tx_ocrcode: usuario.tx_cencos,
+        tx_ocrcode2: usuario.tx_cencos2,
       })),
       pagos: pagos.map((p, idx) => ({
         id_linea: idx + 1,
