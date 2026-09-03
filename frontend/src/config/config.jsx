@@ -26,4 +26,5 @@ export const N8N_BANCOS_URL = import.meta.env.VITE_N8N_BANCOS_URL || 'https://n8
 export const UPLOAD_FILE_URL = import.meta.env.VITE_UPLOAD_FILE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles';
 export const ARCHIVOS_BASE_URL = import.meta.env.VITE_ARCHIVOS_BASE_URL || 'http://72.61.3.141:3030';
 export const CARPETA_ARCHIVO = import.meta.env.VITE_CARPETA_ARCHIVO || 'recibosCaja';
+export const N8N_CONFIG_POSVE_URL = import.meta.env.VITE_N8N_CONFIG_POSVE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/configPOSVE';
 

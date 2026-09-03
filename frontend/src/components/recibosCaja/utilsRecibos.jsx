@@ -15,9 +15,8 @@ const TIPOS_DOC = { Factura: "FAC", "Nota Crédito": "NC", "Nota Débito": "ND" 
 const soloFecha = (valor) => (valor ? String(valor).slice(0, 10) : "");
 
 export const facturaVacia = (raw) => {
-  // db_saldofra se calculaba contra el saldo de la factura por error; el cálculo
-  // real de descuento/valor a pagar debe hacerse contra el subtotal. Se conserva
-  // el nombre db_saldofra porque el backend de recibos ya espera esa clave.
+  // El descuento se calcula sobre el subtotal (db_saldofra), pero se resta del
+  // saldo real de la factura (db_saldo) para obtener el valor a pagar.
   const subtotal = Number(raw.subtotal ?? raw.db_saldofra ?? 0);
   const tipoDocCrudo = raw.tipoDoc ?? raw.tx_tipodoc ?? "Factura";
   const fechaDoc = soloFecha(raw.fechaDoc ?? raw.fe_fechadoc ?? raw.DocDate);
@@ -42,7 +41,7 @@ export const calcularDescuentoFactura = (fila) =>
   Math.round((fila.db_saldofra * fila.db_prcdto) / 100);
 
 export const calcularValorAPagar = (fila) =>
-  fila.esParcial ? fila.db_vlrpag : Math.round(fila.db_saldofra - calcularDescuentoFactura(fila));
+  fila.esParcial ? fila.db_vlrpag : Math.round(fila.db_saldo - calcularDescuentoFactura(fila));
 
 export const MANEJOS_CHEQUE = [
   { codigo: "DIA", label: "Al Día" },

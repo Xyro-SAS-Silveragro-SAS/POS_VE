@@ -13,9 +13,12 @@ import {
 import { db } from "../../db/db";
 import syncService from "../../services/syncService.js";
 import Funciones from "../../helpers/Funciones";
-import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL, CARPETA_ARCHIVO } from "../../config/config.jsx";
+import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL, CARPETA_ARCHIVO, N8N_CONFIG_POSVE_URL } from "../../config/config.jsx";
 
 const MAX_COMPROBANTE_MB = 5;
+
+// Serie de recibos de caja a usar si la configuración de N8N no responde.
+const SERIE_RECIBOS_CAJA_FALLBACK = 188;
 
 // Se oculta temporalmente la opción de agregar pagos con cheque.
 const MOSTRAR_OPCION_CHEQUE = false;
@@ -40,6 +43,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [comprobanteFile, setComprobanteFile] = useState(null);
   const [comprobantePreview, setComprobantePreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
+  const [serieRecibosCaja, setSerieRecibosCaja] = useState(SERIE_RECIBOS_CAJA_FALLBACK);
 
   useEffect(() => {
     if (!open) return;
@@ -64,6 +68,12 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       .then((res) => res.json())
       .then((data) => setBancos(data?.Mensaje?.dListado ?? []))
       .catch((err) => console.error("Error al cargar bancos:", err));
+    fetch(N8N_CONFIG_POSVE_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.serieRecibosCajaNora) setSerieRecibosCaja(Number(data.serieRecibosCajaNora));
+      })
+      .catch((err) => console.error("Error al cargar la configuración de POSVE:", err));
   }, [open]);
 
   const clientesFiltrados = useMemo(() => {
@@ -191,6 +201,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     setCuentasBancos([]);
     setTarjetas([]);
     setBancos([]);
+    setSerieRecibosCaja(SERIE_RECIBOS_CAJA_FALLBACK);
     if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
     setComprobanteFile(null);
     setComprobantePreview(null);
@@ -220,7 +231,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       in_nrosap: 0,
       in_clavesap: 0,
       tx_usuario: usuario.tx_usuario,
-      in_serie: usuario.in_serie_oc,
+      in_serie: serieRecibosCaja,
       dt_fecha_reg_pag: fecha,
       tx_origen: "NORA",
       facturas: filas.map((f, idx) => ({
