@@ -42,7 +42,7 @@ export const calcularDescuentoFactura = (fila) =>
   Math.round((fila.db_saldofra * fila.db_prcdto) / 100);
 
 export const calcularValorAPagar = (fila) =>
-  fila.esParcial ? fila.db_vlrpag : fila.db_saldofra - calcularDescuentoFactura(fila);
+  fila.esParcial ? fila.db_vlrpag : Math.round(fila.db_saldofra - calcularDescuentoFactura(fila));
 
 export const MANEJOS_CHEQUE = [
   { codigo: "DIA", label: "Al Día" },
