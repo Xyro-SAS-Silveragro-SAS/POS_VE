@@ -594,13 +594,13 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
         {/* Pie */}
         <div className="flex gap-3 border-t border-stone-100 bg-white px-5 py-4">
           {/* TEMPORAL: quitar este botón cuando ya no se necesite ver el payload en consola */}
-          <button
+          {/* <button
             type="button"
             onClick={handleVerPayload}
             className="rounded-xl border border-dashed border-stone-300 px-3 py-3 text-sm font-semibold text-stone-500 transition hover:bg-stone-50"
           >
             Ver payload
-          </button>
+          </button> */}
           <button onClick={resetAndClose} className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-semibold text-stone-600 transition hover:bg-stone-50">
             Cancelar
           </button>
