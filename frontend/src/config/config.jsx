@@ -17,13 +17,17 @@ export const SL_BASE_URL = import.meta.env.VITE_SL_BASE_URL || '/api/sl';
 export const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/obtenerDestinosPosVe';
 export const N8N_CLIENTES_URL = import.meta.env.VITE_N8N_CLIENTES_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/clientesPosVe';
 export const N8N_CARGA_MASIVA_URL = import.meta.env.VITE_N8N_CARGA_MASIVA_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva';
-export const N8N_GET_FACTURAS_URL = import.meta.env.VITE_N8N_GET_FACTURAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturas';
+export const N8N_GET_FACTURAS_URL = (import.meta.env.VITE_ENV === 'demo')
+  ? (import.meta.env.VITE_N8N_GET_FACTURAS_URL_DEMO || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturasTest')
+  : (import.meta.env.VITE_N8N_GET_FACTURAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturas');
 export const N8N_ITEMS_URL = import.meta.env.VITE_N8N_ITEMS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/222f2c15-71ec-4de3-b390-824d7e0783fc/itemsBodega';
 export const N8N_CUENTAS_EFECTIVO_URL = import.meta.env.VITE_N8N_CUENTAS_EFECTIVO_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/cuentasefectivo';
 export const N8N_CUENTAS_BANCOS_URL = import.meta.env.VITE_N8N_CUENTAS_BANCOS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/cuentasbancos';
 export const N8N_TARJETAS_URL = import.meta.env.VITE_N8N_TARJETAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/tarjetas';
 export const N8N_BANCOS_URL = import.meta.env.VITE_N8N_BANCOS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/4fe4c38f-e27b-435a-8fb7-f7817e35fa9e/listas/bancos';
-export const UPLOAD_FILE_URL = import.meta.env.VITE_UPLOAD_FILE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles';
+export const UPLOAD_FILE_URL = (import.meta.env.VITE_ENV === 'demo')
+  ? (import.meta.env.VITE_UPLOAD_FILE_URL_DEMO || 'https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles')
+  : (import.meta.env.VITE_UPLOAD_FILE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles');
 export const ARCHIVOS_BASE_URL = import.meta.env.VITE_ARCHIVOS_BASE_URL || 'http://72.61.3.141:3030';
 export const CARPETA_ARCHIVO = import.meta.env.VITE_CARPETA_ARCHIVO || 'recibosCaja';
 export const N8N_CONFIG_POSVE_URL = import.meta.env.VITE_N8N_CONFIG_POSVE_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/configPOSVE';

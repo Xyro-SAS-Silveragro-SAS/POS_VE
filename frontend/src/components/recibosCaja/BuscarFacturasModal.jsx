@@ -27,7 +27,7 @@ const BuscarFacturasModal = ({ open, onClose, cliente, usuario, onAgregar }) => 
         const data = await res.json();
         const item = Array.isArray(data) ? data[0] : data;
         const datos = item?.json?.datos ?? item?.datos ?? [];
-        setFacturas(datos.filter((f) => f.tipoDoc === "Factura"));
+        setFacturas(datos);
       } catch (err) {
         console.error(err);
         setError("No se pudieron cargar las facturas del cliente.");
@@ -121,7 +121,7 @@ const BuscarFacturasModal = ({ open, onClose, cliente, usuario, onAgregar }) => 
                         <Square size={18} className="shrink-0 text-stone-300" />
                       )}
                       <span>
-                        <span className="block text-sm font-medium text-stone-800">Factura {f.nroDoc}</span>
+                        <span className="block text-sm font-medium text-stone-800">{f.tipoDoc || "Factura"} {f.nroDoc}</span>
                         <span className="block text-xs text-stone-400">Saldo: {currency(f.saldo)}</span>
                       </span>
                     </span>

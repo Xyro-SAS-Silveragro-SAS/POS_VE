@@ -1,22 +1,39 @@
 import { Trash2 } from "lucide-react";
 import NumInput from "./NumInput";
-import { currency, calcularValorAPagar, DESCUENTOS } from "./utilsRecibos";
+import { currency, DESCUENTOS } from "./utilsRecibos";
+import Funciones from "../../helpers/Funciones";
 
 // Se ocultan temporalmente los demás porcentajes de descuento, solo se deja disponible el 3%.
 const DESCUENTOS_VISIBLES = DESCUENTOS.filter((d) => d === 3);
 
 const FilaFactura = ({ fila, onUpdate, onRemove }) => {
-  const neto = calcularValorAPagar(fila);
+  const esNotaCredito = fila.tx_tipodoc === "NC";
+  const esPagoRecibido = fila.tx_tipodoc === "PR";
+  const sinDescuento = esNotaCredito || esPagoRecibido;
 
   const toggleParcial = () => {
     if (fila.esParcial) {
-      onUpdate({ ...fila, esParcial: false });
+      onUpdate({ ...fila, esParcial: false, db_prcdto: 0, db_vlrdto: 0, db_vlrpag: fila.db_saldo });
     } else {
       onUpdate({ ...fila, esParcial: true, db_prcdto: 0, db_vlrdto: 0, db_vlrpag: 0 });
     }
   };
 
-  const checkboxParcial = (
+  // El pago recibido siempre resta (valor negativo) y no puede superar el tope de la línea
+  // (su saldo original). NumInput solo entrega magnitudes positivas, por eso se invierte el signo aquí.
+  const handleValorPagoRecibido = (magnitud) => {
+    const tope = Math.abs(fila.db_saldo);
+    if (magnitud > tope) {
+      Funciones.alerta("Atención", `El valor de este pago recibido no puede superar el tope de la línea: ${currency(tope)}.`, "warning");
+      onUpdate({ ...fila, db_vlrpag: fila.db_saldo });
+      return;
+    }
+    onUpdate({ ...fila, db_vlrpag: -magnitud });
+  };
+
+  const checkboxParcial = esNotaCredito ? (
+    <span className="text-xs text-stone-400">N/A</span>
+  ) : (
     <input
       type="checkbox"
       checked={!!fila.esParcial}
@@ -35,22 +52,44 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
     </div>
   );
 
-  const selectDescuento = (className = "") => (
-    <select
-      value={fila.db_prcdto}
-      onChange={(e) => {
-        const db_prcdto = Number(e.target.value);
-        onUpdate({ ...fila, db_prcdto });
-      }}
-      disabled={fila.esParcial}
-      className={`w-full bg-transparent text-sm outline-none text-right ${className} disabled:cursor-not-allowed disabled:text-stone-400`}
-    >
-      <option value="">Sin descuento</option>
-      {DESCUENTOS_VISIBLES.map((d) => (
-        <option key={d} value={d}>{d === 0 ? "Sin descuento" : `${d}%`}</option>
-      ))}
-    </select>
-  );
+  // El select fija un % predefinido y calcula su valor en pesos; el campo de abajo permite
+  // escribir directamente el valor en pesos del descuento y de ahí se calcula el % equivalente.
+  // En ambos casos db_vlrpag (fuente de verdad) se recalcula igual.
+  const aplicarDescuentoPorPorcentaje = (db_prcdto) => {
+    const db_vlrdto = Math.round((fila.db_saldofra * db_prcdto) / 100);
+    onUpdate({ ...fila, db_prcdto, db_vlrdto, db_vlrpag: Math.round(fila.db_saldo - db_vlrdto) });
+  };
+
+  const aplicarDescuentoPorValor = (db_vlrdto) => {
+    const db_prcdto = fila.db_saldofra ? Math.round((db_vlrdto / fila.db_saldofra) * 10000) / 100 : 0;
+    onUpdate({ ...fila, db_prcdto, db_vlrdto, db_vlrpag: Math.round(fila.db_saldo - db_vlrdto) });
+  };
+
+  const selectDescuento = (className = "") =>
+    sinDescuento ? (
+      <span className="block w-full text-right text-sm text-stone-400">N/A</span>
+    ) : (
+      <div className="space-y-1">
+        <select
+          value={fila.db_prcdto}
+          onChange={(e) => aplicarDescuentoPorPorcentaje(Number(e.target.value))}
+          disabled={fila.esParcial}
+          className={`w-full bg-transparent text-sm outline-none text-right ${className} disabled:cursor-not-allowed disabled:text-stone-400`}
+        >
+          <option value="">Sin descuento</option>
+          {DESCUENTOS_VISIBLES.map((d) => (
+            <option key={d} value={d}>{d === 0 ? "Sin descuento" : `${d}%`}</option>
+          ))}
+        </select>
+        <NumInput
+          value={fila.db_vlrdto}
+          onChange={aplicarDescuentoPorValor}
+          disabled={fila.esParcial}
+          placeholder="Valor descuento"
+          className="w-full rounded border border-stone-200 bg-white px-1.5 py-0.5 text-xs text-right"
+        />
+      </div>
+    );
 
   return (
     <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
@@ -86,16 +125,16 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
           </label>
         </div>
 
-        <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${fila.esParcial ? "border border-[#546C4C]/40 bg-white" : "bg-[#546C4C]/8"}`}>
+        <div className="flex items-center justify-between rounded-lg border border-[#546C4C]/40 bg-white px-3 py-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">Valor a pagar</span>
-          {fila.esParcial ? (
+          {esNotaCredito ? (
+            <span className="text-base font-bold text-[#546C4C]">{currency(fila.db_vlrpag)}</span>
+          ) : (
             <NumInput
               value={fila.db_vlrpag}
-              onChange={(v) => onUpdate({ ...fila, db_vlrpag: v })}
+              onChange={esPagoRecibido ? handleValorPagoRecibido : (v) => onUpdate({ ...fila, db_vlrpag: v })}
               className="w-28 text-right text-base font-bold text-[#546C4C]"
             />
-          ) : (
-            <span className="text-base font-bold text-[#546C4C]">{currency(neto)}</span>
           )}
         </div>
       </div>
@@ -116,15 +155,15 @@ const FilaFactura = ({ fila, onUpdate, onRemove }) => {
           {selectDescuento()}
         </div>
 
-        <div className={`flex items-center justify-end rounded-lg px-2 py-1.5 ${fila.esParcial ? "border border-[#546C4C]/40 bg-white" : "bg-[#546C4C]/5"}`}>
-          {fila.esParcial ? (
+        <div className="flex items-center justify-end rounded-lg border border-[#546C4C]/40 bg-white px-2 py-1.5">
+          {esNotaCredito ? (
+            <span className="text-sm font-semibold text-[#546C4C]">{currency(fila.db_vlrpag)}</span>
+          ) : (
             <NumInput
               value={fila.db_vlrpag}
-              onChange={(v) => onUpdate({ ...fila, db_vlrpag: v })}
+              onChange={esPagoRecibido ? handleValorPagoRecibido : (v) => onUpdate({ ...fila, db_vlrpag: v })}
               className="text-right text-sm font-semibold text-[#546C4C]"
             />
-          ) : (
-            <span className="text-sm font-semibold text-[#546C4C]">{currency(neto)}</span>
           )}
         </div>
 

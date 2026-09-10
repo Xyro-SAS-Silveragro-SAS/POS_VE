@@ -101,7 +101,8 @@ const FilaPago = ({ pago, onUpdate, onRemove, canRemove, cuentasEfectivo = [], c
             type="text"
             value={pago.tx_referen}
             onChange={(e) => onUpdate({ ...pago, tx_referen: e.target.value })}
-            placeholder="Referencia"
+            maxLength={25}
+            placeholder="Referencia. Máximo 25 caracteres"
             className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-[#546C4C]"
           />
         </div>

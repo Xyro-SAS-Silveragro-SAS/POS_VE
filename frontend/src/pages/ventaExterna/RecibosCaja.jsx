@@ -29,6 +29,7 @@ const ESTADOS_RECIBO = {
   3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
   4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
   5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
+  6: { label: "Por consignar", clase: "bg-blue-100 text-blue-700" },
 };
 
 const estadoRecibo = (r) =>

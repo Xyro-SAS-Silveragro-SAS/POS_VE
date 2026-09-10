@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { X, FileText, Image as ImageIcon, Receipt, ExternalLink } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { X, FileText, Image as ImageIcon, Receipt, ExternalLink, ArrowLeftRight } from "lucide-react";
 import { currency, MEDIOS_PAGO, MANEJOS_CHEQUE } from "./utilsRecibos";
-import { ARCHIVOS_BASE_URL, CARPETA_ARCHIVO } from "../../config/config.jsx";
+import { ARCHIVOS_BASE_URL, CARPETA_ARCHIVO, N8N_CUENTAS_BANCOS_URL } from "../../config/config.jsx";
 import api from "../../services/apiService";
+import ConvertirPagoEfectivoModal from "./ConvertirPagoEfectivoModal";
 
 const ESTADOS_RECIBO = {
   1: { label: "Creado", clase: "bg-blue-100 text-blue-700" },
@@ -10,6 +11,7 @@ const ESTADOS_RECIBO = {
   3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
   4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
   5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
+  6: { label: "Por consignar", clase: "bg-blue-100 text-blue-700" },
 };
 
 const MANEJO_LABEL = (codigo) => MANEJOS_CHEQUE.find((m) => m.codigo === codigo)?.label || codigo;
@@ -23,14 +25,33 @@ const formatFecha = (valor) => {
 
 const esImagen = (nombreArchivo) => /\.(png|jpe?g|gif|webp|bmp)$/i.test(nombreArchivo || "");
 
+// tx_imagen ahora guarda un JSON.stringify con uno o varios archivos: [{ fileName, folder, path }].
+// Se mantiene compatibilidad con recibos antiguos donde tx_imagen era solo el nombre del archivo.
+const parseComprobantes = (txImagen) => {
+  if (!txImagen) return [];
+  try {
+    const parsed = JSON.parse(txImagen);
+    const lista = Array.isArray(parsed) ? parsed : [parsed];
+    return lista
+      .filter((item) => item && (item.path || item.fileName))
+      .map((item) => ({
+        fileName: item.fileName || String(item.path).split("/").pop(),
+        url: item.path || `${ARCHIVOS_BASE_URL}/${item.folder || CARPETA_ARCHIVO}/${item.fileName}`,
+      }));
+  } catch {
+    return [{ fileName: String(txImagen).split("/").pop(), url: `${ARCHIVOS_BASE_URL}/${CARPETA_ARCHIVO}/${txImagen}` }];
+  }
+};
+
 const VerReciboModal = ({ open, onClose, idNrorc }) => {
   const [recibo, setRecibo] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [cuentasBancos, setCuentasBancos] = useState([]);
+  const [pagoEfectivoSeleccionado, setPagoEfectivoSeleccionado] = useState(null);
 
-  useEffect(() => {
-    if (!open || !idNrorc) return;
-    setRecibo(null);
+  const cargarRecibo = useCallback(() => {
+    if (!idNrorc) return;
     setError("");
     setCargando(true);
     api
@@ -47,12 +68,27 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
         setError("No se pudo obtener la información del recibo.");
       })
       .finally(() => setCargando(false));
-  }, [open, idNrorc]);
+  }, [idNrorc]);
+
+  useEffect(() => {
+    if (!open || !idNrorc) return;
+    setRecibo(null);
+    cargarRecibo();
+  }, [open, idNrorc, cargarRecibo]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch(N8N_CUENTAS_BANCOS_URL)
+      .then((res) => res.json())
+      .then((data) => setCuentasBancos(data?.Mensaje?.dListado ?? []))
+      .catch((err) => console.error("Error al cargar cuentas de bancos:", err));
+  }, [open]);
 
   if (!open) return null;
 
   const estado = ESTADOS_RECIBO[Number(recibo?.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
-  const urlImagen = recibo?.tx_imagen ? `${ARCHIVOS_BASE_URL}/${CARPETA_ARCHIVO}/${recibo.tx_imagen}` : null;
+  const comprobantes = parseComprobantes(recibo?.tx_imagen);
+  const permiteConvertirEfectivo = Number(recibo?.in_estado) === 6;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4">
@@ -97,6 +133,11 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
                     {estado.label}
                   </span>
                 </div>
+                {Number(recibo.in_estado) === 3 && recibo.tx_motivo_anula && (
+                  <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                    <span className="font-semibold">Motivo de rechazo:</span> {recibo.tx_motivo_anula}
+                  </div>
+                )}
               </section>
 
               <section>
@@ -126,7 +167,19 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
                     <div key={p.id_linea} className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs text-stone-600">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-semibold text-stone-800">{FORMPG_LABEL(p.tx_formpg)} · {p.tx_nombco}</span>
-                        <span className="font-bold text-[#546C4C]">{currency(p.db_vlrpag)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#546C4C]">{currency(p.db_vlrpag)}</span>
+                          {permiteConvertirEfectivo && p.tx_formpg === "EF" && (
+                            <button
+                              type="button"
+                              onClick={() => setPagoEfectivoSeleccionado(p)}
+                              className="flex items-center gap-1 rounded-full bg-[#546C4C]/10 px-2.5 py-1 text-[10px] font-semibold text-[#546C4C] transition hover:bg-[#546C4C]/20"
+                            >
+                              <ArrowLeftRight size={11} />
+                              Convertir a consignación
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-3 text-stone-500">
                         {p.tx_ctanro && p.tx_ctanro !== "0" && <span>Cuenta/nro.: {p.tx_ctanro}</span>}
@@ -160,32 +213,37 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
 
               <section>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Comprobante de pago</h3>
-                {!urlImagen ? (
+                {comprobantes.length === 0 ? (
                   <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50 px-4 py-6 text-center text-xs text-stone-400">
                     Este recibo no tiene un comprobante adjunto.
                   </div>
                 ) : (
-                  <a
-                    href={urlImagen}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 transition hover:bg-stone-100"
-                  >
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
-                      {esImagen(recibo.tx_imagen) ? (
-                        <ImageIcon size={26} className="text-stone-400" />
-                      ) : (
-                        <FileText size={26} className="text-stone-400" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-stone-700">{recibo.tx_imagen.split("/").pop()}</p>
-                      <p className="text-xs text-stone-400">
-                        {esImagen(recibo.tx_imagen) ? "Imagen" : "Documento PDF"} · Abrir en una pestaña nueva
-                      </p>
-                    </div>
-                    <ExternalLink size={16} className="shrink-0 text-stone-400" />
-                  </a>
+                  <div className="space-y-2">
+                    {comprobantes.map((c, idx) => (
+                      <a
+                        key={idx}
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 transition hover:bg-stone-100"
+                      >
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
+                          {esImagen(c.fileName) ? (
+                            <ImageIcon size={26} className="text-stone-400" />
+                          ) : (
+                            <FileText size={26} className="text-stone-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-stone-700">{c.fileName}</p>
+                          <p className="text-xs text-stone-400">
+                            {esImagen(c.fileName) ? "Imagen" : "Documento PDF"} · Abrir en una pestaña nueva
+                          </p>
+                        </div>
+                        <ExternalLink size={16} className="shrink-0 text-stone-400" />
+                      </a>
+                    ))}
+                  </div>
                 )}
               </section>
             </>
@@ -198,6 +256,19 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
           </button>
         </div>
       </div>
+
+      <ConvertirPagoEfectivoModal
+        open={!!pagoEfectivoSeleccionado}
+        idNrorc={idNrorc}
+        pago={pagoEfectivoSeleccionado}
+        txImagenActual={recibo?.tx_imagen}
+        cuentasBancos={cuentasBancos}
+        onClose={() => setPagoEfectivoSeleccionado(null)}
+        onGuardado={() => {
+          setPagoEfectivoSeleccionado(null);
+          cargarRecibo();
+        }}
+      />
     </div>
   );
 };

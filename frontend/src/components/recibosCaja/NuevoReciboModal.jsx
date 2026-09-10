@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt, Camera, Upload, ImagePlus, Trash2, FileText } from "lucide-react";
+import { X, User, ChevronRight, RefreshCw, Search, Banknote, ArrowLeftRight, CreditCard, Landmark, Receipt, Camera, Upload, ImagePlus, Trash2, FileText, Eye } from "lucide-react";
 import FilaFactura from "./FilaFactura";
 import FilaPago from "./FilaPago";
 import BuscarFacturasModal from "./BuscarFacturasModal";
+import PreviewComprobanteModal from "./PreviewComprobanteModal";
 import {
   currency,
   calcularValorAPagar,
@@ -10,12 +11,11 @@ import {
   facturaVacia,
   pagoVacio,
 } from "./utilsRecibos";
+import { MAX_COMPROBANTE_MB, subirComprobantes } from "./subirArchivos";
 import { db } from "../../db/db";
 import syncService from "../../services/syncService.js";
 import Funciones from "../../helpers/Funciones";
-import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, UPLOAD_FILE_URL, CARPETA_ARCHIVO, N8N_CONFIG_POSVE_URL } from "../../config/config.jsx";
-
-const MAX_COMPROBANTE_MB = 5;
+import { API_MTS, TOKEN, N8N_CUENTAS_EFECTIVO_URL, N8N_CUENTAS_BANCOS_URL, N8N_TARJETAS_URL, N8N_BANCOS_URL, N8N_CONFIG_POSVE_URL } from "../../config/config.jsx";
 
 // Serie de recibos de caja a usar si la configuración de N8N no responde.
 const SERIE_RECIBOS_CAJA_FALLBACK = 188;
@@ -40,8 +40,8 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const [cuentasBancos, setCuentasBancos] = useState([]);
   const [tarjetas, setTarjetas] = useState([]);
   const [bancos, setBancos] = useState([]);
-  const [comprobanteFile, setComprobanteFile] = useState(null);
-  const [comprobantePreview, setComprobantePreview] = useState(null);
+  const [comprobantes, setComprobantes] = useState([]); // [{ file, preview }]
+  const [comprobanteEnPreview, setComprobanteEnPreview] = useState(null);
   const [subiendoComprobante, setSubiendoComprobante] = useState(false);
   const [serieRecibosCaja, setSerieRecibosCaja] = useState(SERIE_RECIBOS_CAJA_FALLBACK);
 
@@ -123,6 +123,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   );
 
   const vlrPagoACuenta = Math.max(0, Math.round(totalPagos - totalAplicadoFacturas));
+  const faltantePorCubrir = Math.max(0, Math.round(totalAplicadoFacturas - totalPagos));
 
   const hoyISO = new Date().toISOString().slice(0, 10);
 
@@ -147,11 +148,13 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
 
   const puedeGuardar =
     clienteSel &&
-    filas.length > 0 &&
-    filas.every((f) => calcularValorAPagar(f) > 0) &&
-    totalAplicadoFacturas > 0 &&
-    totalPagos > 0 &&
+    // Las notas crédito y los pagos recibidos siempre restan (valor negativo); el resto de
+    // documentos sí debe tener un valor a pagar positivo.
+    filas.every((f) =>
+      f.tx_tipodoc === "NC" || f.tx_tipodoc === "PR" ? calcularValorAPagar(f) < 0 : calcularValorAPagar(f) > 0
+    ) &&
     totalAplicadoFacturas <= totalPagos &&
+    totalPagos > 0 &&
     pagos.length > 0 &&
     pagos.every(pagoValido);
 
@@ -170,22 +173,36 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     setPagos((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSeleccionarComprobante = (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = "";
-    if (!file) return;
-    if (file.size > MAX_COMPROBANTE_MB * 1024 * 1024) {
-      Funciones.alerta("Atención", `El archivo supera el tamaño máximo permitido de ${MAX_COMPROBANTE_MB}MB.`, "info");
-      return;
+    if (!files.length) return;
+
+    const validos = [];
+    for (const file of files) {
+      if (file.size > MAX_COMPROBANTE_MB * 1024 * 1024) {
+        Funciones.alerta("Atención", `El archivo "${file.name}" supera el tamaño máximo permitido de ${MAX_COMPROBANTE_MB}MB.`, "info");
+        continue;
+      }
+      validos.push({ file, preview: URL.createObjectURL(file) });
     }
-    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
-    setComprobanteFile(file);
-    setComprobantePreview(URL.createObjectURL(file));
+    if (validos.length) setComprobantes((prev) => [...prev, ...validos]);
   };
 
-  const handleQuitarComprobante = () => {
-    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
-    setComprobanteFile(null);
-    setComprobantePreview(null);
+  const handleVerComprobante = (idx) => {
+    const c = comprobantes[idx];
+    if (!c) return;
+    if (c.file.type === "application/pdf") {
+      window.open(c.preview, "_blank", "noopener,noreferrer");
+    } else {
+      setComprobanteEnPreview(c);
+    }
+  };
+
+  const handleQuitarComprobante = (idx) => {
+    setComprobantes((prev) => {
+      if (prev[idx]?.preview) URL.revokeObjectURL(prev[idx].preview);
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
   const resetAndClose = () => {
@@ -202,9 +219,9 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     setTarjetas([]);
     setBancos([]);
     setSerieRecibosCaja(SERIE_RECIBOS_CAJA_FALLBACK);
-    if (comprobantePreview) URL.revokeObjectURL(comprobantePreview);
-    setComprobanteFile(null);
-    setComprobantePreview(null);
+    comprobantes.forEach((c) => c.preview && URL.revokeObjectURL(c.preview));
+    setComprobantes([]);
+    setComprobanteEnPreview(null);
     onClose();
   };
 
@@ -213,6 +230,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     const fecha = ahora.toISOString().slice(0, 10);
     const hora = ahora.toLocaleTimeString("en-GB");
     const sumaPorTipo = (tipo) => pagos.filter((p) => p.tx_formpg === tipo).reduce((s, p) => s + Number(p.db_vlrpag || 0), 0);
+    const llevaEfectivo = pagos.some((p) => p.tx_formpg === "EF");
 
     return {
       tx_codsn: String(clienteSel.Codigo),
@@ -227,9 +245,9 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
       db_vlrpgcta: vlrPagoACuenta,
       tx_coment: observaciones,
       tx_imagen: txImagen || "",
-      in_estado: 4,
+      in_estado: llevaEfectivo ? 6 : 4,//si lleva efectivo se manda en estado 6 para esperar a que suban los comprobantes, si no lleva efectivo se manda en estado 4 para que quede en aprobación.
       in_nrosap: 0,
-      in_clavesap: 0,
+      in_clavesap: 0, 
       tx_usuario: usuario.tx_usuario,
       in_serie: serieRecibosCaja,
       dt_fecha_reg_pag: fecha,
@@ -277,38 +295,24 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
     console.log("Payload recibo de caja:", construirRecibo());
   };
 
-  const subirComprobante = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("carpeta", CARPETA_ARCHIVO);
-
-    const response = await fetch(UPLOAD_FILE_URL, { method: "POST", body: formData });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || !data?.success) {
-      throw new Error(data?.message || data?.error || "No se pudo subir el comprobante de pago.");
-    }
-
-    return data.fileName;
-  };
-
   const handleGuardar = async () => {
     if (!usuario?.tx_usuario) {
       Funciones.alerta("Atención", "No hay un usuario logueado válido", "error");
       return;
     }
     if (!puedeGuardar) {
-      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos una factura con valor a pagar mayor a cero, que el valor recibido cubra el valor aplicado a las facturas, que los pagos en efectivo tengan una cuenta seleccionada, que los pagos por consignación tengan banco, fecha y referencia, que los pagos con tarjeta tengan tarjeta, número, una fecha de vencimiento válida (no vencida) y voucher, y que los pagos con cheque tengan cuenta, banco, número de cheque, cuenta cheque, aprobado, central de riesgo, manejo y una fecha de vencimiento válida (no vencida).", "info");
+      Funciones.alerta("Atención", "Verifica que haya un cliente, al menos un medio de pago, que el valor recibido cubra el valor aplicado a las facturas seleccionadas (si hay), que los pagos en efectivo tengan una cuenta seleccionada, que los pagos por consignación tengan banco, fecha y referencia, que los pagos con tarjeta tengan tarjeta, número, una fecha de vencimiento válida (no vencida) y voucher, y que los pagos con cheque tengan cuenta, banco, número de cheque, cuenta cheque, aprobado, central de riesgo, manejo y una fecha de vencimiento válida (no vencida).", "info");
       return;
     }
 
     setGuardando(true);
     try {
       let txImagen = "";
-      if (comprobanteFile) {
+      if (comprobantes.length) {
         setSubiendoComprobante(true);
         try {
-          txImagen = await subirComprobante(comprobanteFile);
+          const archivosSubidos = await subirComprobantes(comprobantes.map((c) => c.file));
+          txImagen = JSON.stringify(archivosSubidos);
         } catch (err) {
           console.error("Error al subir el comprobante de pago:", err);
           Funciones.alerta("Error", err.message || "No se pudo subir el comprobante de pago. El recibo no fue enviado.", "error");
@@ -519,6 +523,11 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
                   Excedente a favor del cliente (pago a cuenta): <span className="font-semibold">{currency(vlrPagoACuenta)}</span>
                 </p>
               )}
+              {faltantePorCubrir > 0 && (
+                <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-semibold text-red-600">
+                  Los medios de pago no alcanzan a cubrir el valor a pagar de las facturas seleccionadas. Faltan {currency(faltantePorCubrir)}.
+                </div>
+              )}
             </section>
           )}
 
@@ -541,50 +550,65 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Comprobante de pago</h3>
               <div className="rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-4">
-                {comprobantePreview ? (
-                  <div className="flex items-center gap-3">
-                    {comprobanteFile?.type === "application/pdf" ? (
-                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
-                        <FileText size={28} className="text-stone-400" />
+                {comprobantes.length > 0 && (
+                  <div className="space-y-2">
+                    {comprobantes.map((c, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        {c.file.type === "application/pdf" ? (
+                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white">
+                            <FileText size={26} className="text-stone-400" />
+                          </div>
+                        ) : (
+                          <img
+                            src={c.preview}
+                            alt="Comprobante de pago"
+                            className="h-16 w-16 shrink-0 rounded-lg border border-stone-200 object-cover"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-stone-700">{c.file.name}</p>
+                          <p className="text-xs text-stone-400">{(c.file.size / 1024).toFixed(0)} KB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleVerComprobante(idx)}
+                          title={c.file.type === "application/pdf" ? "Abrir PDF en una pestaña nueva" : "Ver comprobante"}
+                          className="flex items-center justify-center rounded-lg p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-600"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuitarComprobante(idx)}
+                          title="Quitar archivo"
+                          className="flex items-center justify-center rounded-lg p-2 text-stone-300 transition hover:bg-red-50 hover:text-red-400"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                    ) : (
-                      <img
-                        src={comprobantePreview}
-                        alt="Comprobante de pago"
-                        className="h-20 w-20 shrink-0 rounded-lg border border-stone-200 object-cover"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-stone-700">{comprobanteFile?.name}</p>
-                      <p className="text-xs text-stone-400">{((comprobanteFile?.size || 0) / 1024).toFixed(0)} KB</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleQuitarComprobante}
-                      title="Quitar imagen"
-                      className="flex items-center justify-center rounded-lg p-2 text-stone-300 transition hover:bg-red-50 hover:text-red-400"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 py-2 text-center">
-                    <ImagePlus size={26} className="text-stone-300" />
-                    <p className="text-xs text-stone-400">Adjunta una foto o un PDF del comprobante de pago (opcional)</p>
-                    <div className="mt-1 flex flex-wrap justify-center gap-2">
-                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-3 py-1.5 text-xs font-semibold text-[#546C4C] transition hover:bg-[#546C4C]/20">
-                        <Camera size={14} strokeWidth={2.5} />
-                        Tomar foto
-                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleSeleccionarComprobante} />
-                      </label>
-                      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-stone-200/60 px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:bg-stone-200">
-                        <Upload size={14} strokeWidth={2.5} />
-                        Subir del dispositivo
-                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleSeleccionarComprobante} />
-                      </label>
-                    </div>
+                    ))}
                   </div>
                 )}
+                <div className={`flex flex-col items-center gap-2 text-center ${comprobantes.length ? "mt-3 border-t border-stone-200 pt-3" : "py-2"}`}>
+                  {!comprobantes.length && (
+                    <>
+                      <ImagePlus size={26} className="text-stone-300" />
+                      <p className="text-xs text-stone-400">Adjunta fotos o PDFs del comprobante de pago (opcional)</p>
+                    </>
+                  )}
+                  <div className="mt-1 flex flex-wrap justify-center gap-2">
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#546C4C]/10 px-3 py-1.5 text-xs font-semibold text-[#546C4C] transition hover:bg-[#546C4C]/20">
+                      <Camera size={14} strokeWidth={2.5} />
+                      Tomar foto
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleSeleccionarComprobante} />
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-stone-200/60 px-3 py-1.5 text-xs font-semibold text-stone-600 transition hover:bg-stone-200">
+                      <Upload size={14} strokeWidth={2.5} />
+                      {comprobantes.length ? "Agregar más archivos" : "Subir del dispositivo"}
+                      <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleSeleccionarComprobante} />
+                    </label>
+                  </div>
+                </div>
               </div>
               <p className="mt-1 text-[11px] text-stone-400">* Tamaño máximo {MAX_COMPROBANTE_MB}MB. Se sube al guardar el recibo.</p>
             </section>
@@ -620,6 +644,12 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
         cliente={clienteSel}
         usuario={usuario}
         onAgregar={agregarFacturasSeleccionadas}
+      />
+
+      <PreviewComprobanteModal
+        open={!!comprobanteEnPreview}
+        onClose={() => setComprobanteEnPreview(null)}
+        comprobante={comprobanteEnPreview}
       />
     </div>
   );
