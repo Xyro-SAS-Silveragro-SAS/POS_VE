@@ -1,6 +1,11 @@
 export const currency = (valor) =>
   `$${new Intl.NumberFormat("es-CO").format(Math.round(Number(valor) || 0))}`;
 
+// Colombia es UTC-5 todo el año (sin horario de verano): calcular "hoy" con
+// toISOString()/Date local del navegador corre el riesgo de tomar otra zona horaria
+// o adelantarse un día cuando el dispositivo no está en hora de Bogotá.
+export const hoyBogota = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+
 export const DESCUENTOS = [3, 4, 5, 7.85];
 
 export const MEDIOS_PAGO = [
@@ -31,6 +36,8 @@ export const facturaVacia = (raw) => {
     tx_tipodoc: TIPOS_DOC[normalizar(tipoDocCrudo)] ?? tipoDocCrudo,
     in_clavesap: raw.docEntry ?? raw.claveSap ?? raw.in_clavesap ?? raw.DocEntry ?? 0,
     in_nrosap: raw.nroDoc ?? raw.in_nrosap ?? raw.DocNum ?? "",
+    in_lineid: raw.lineId ?? raw.LineId ?? raw.in_lineid ?? 0,
+    in_transid: raw.transId ?? raw.TransId ?? raw.in_transid ?? 0,
     fe_fechadoc: fechaDoc,
     fe_fechaven: soloFecha(raw.fechaVen ?? raw.fe_fechaven ?? raw.DocDueDate) || fechaDoc,
     fe_fechadespacho: soloFecha(raw.fechaDespacho ?? raw.FechaDespacho ?? raw.fecha_despacho ?? raw.U_Fecha_Despacho),
@@ -63,7 +70,7 @@ export const pagoVacio = (tipo = "EF") => ({
   tx_ctanro: "",
   tx_ctaefec: "",
   tx_nomctaefec: "",
-  fe_venc: new Date().toISOString().slice(0, 10),
+  fe_venc: hoyBogota(),
   db_vlrpag: 0,
   tx_referen: "",
   tx_aprobado: "",

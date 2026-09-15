@@ -1,13 +1,13 @@
 import { Trash2, Banknote, ArrowLeftRight, CreditCard, Landmark } from "lucide-react";
 import NumInput from "./NumInput";
-import { MEDIOS_PAGO, MANEJOS_CHEQUE } from "./utilsRecibos";
+import { MEDIOS_PAGO, MANEJOS_CHEQUE, hoyBogota } from "./utilsRecibos";
 
 const ICONOS_MEDIO_PAGO = { EF: Banknote, CO: ArrowLeftRight, TC: CreditCard, CH: Landmark };
 
 const FilaPago = ({ pago, onUpdate, onRemove, canRemove, cuentasEfectivo = [], cuentasBancos = [], tarjetas = [], bancos = [] }) => {
   const label = MEDIOS_PAGO.find((m) => m.codigo === pago.tx_formpg)?.label;
   const Icono = ICONOS_MEDIO_PAGO[pago.tx_formpg];
-  const hoyISO = new Date().toISOString().slice(0, 10);
+  const hoyISO = hoyBogota();
 
   const handleSeleccionarCuentaEfectivo = (codigo) => {
     const cuenta = cuentasEfectivo.find((c) => c.Codigo === codigo);

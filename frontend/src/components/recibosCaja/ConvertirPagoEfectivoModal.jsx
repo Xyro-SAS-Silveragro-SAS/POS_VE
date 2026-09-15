@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { X, ArrowLeftRight, Camera, Upload, ImagePlus, FileText, Trash2 } from "lucide-react";
 import NumInput from "./NumInput";
-import { currency } from "./utilsRecibos";
+import { currency, hoyBogota } from "./utilsRecibos";
 import { MAX_COMPROBANTE_MB, subirComprobantes, parseArchivosExistentes } from "./subirArchivos";
 import Funciones from "../../helpers/Funciones";
 import { API_MTS, TOKEN } from "../../config/config.jsx";
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
-
 const ConvertirPagoEfectivoModal = ({ open, idNrorc, pago, txImagenActual, cuentasBancos = [], onClose, onGuardado }) => {
   const [txBanco, setTxBanco] = useState("");
   const [txNombco, setTxNombco] = useState("");
-  const [feVenc, setFeVenc] = useState(hoyISO());
+  const [feVenc, setFeVenc] = useState(hoyBogota());
   const [txReferen, setTxReferen] = useState("");
   const [dbVlrpag, setDbVlrpag] = useState(0);
   const [comprobantes, setComprobantes] = useState([]); // [{ file, preview }]
@@ -21,7 +19,7 @@ const ConvertirPagoEfectivoModal = ({ open, idNrorc, pago, txImagenActual, cuent
     if (!open || !pago) return;
     setTxBanco("");
     setTxNombco("");
-    setFeVenc(hoyISO());
+    setFeVenc(hoyBogota());
     setTxReferen("");
     setDbVlrpag(Number(pago.db_vlrpag) || 0);
     setComprobantes((prev) => {

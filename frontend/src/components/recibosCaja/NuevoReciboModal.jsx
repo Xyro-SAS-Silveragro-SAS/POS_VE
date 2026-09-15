@@ -10,6 +10,7 @@ import {
   calcularDescuentoFactura,
   facturaVacia,
   pagoVacio,
+  hoyBogota,
 } from "./utilsRecibos";
 import { MAX_COMPROBANTE_MB, subirComprobantes } from "./subirArchivos";
 import { db } from "../../db/db";
@@ -125,7 +126,7 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
   const vlrPagoACuenta = Math.max(0, Math.round(totalPagos - totalAplicadoFacturas));
   const faltantePorCubrir = Math.max(0, Math.round(totalAplicadoFacturas - totalPagos));
 
-  const hoyISO = new Date().toISOString().slice(0, 10);
+  const hoyISO = hoyBogota();
 
   const pagoValido = (p) => {
     if (p.tx_formpg === "EF") return !!p.tx_banco?.trim();
@@ -227,8 +228,8 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
 
   const construirRecibo = (txImagen) => {
     const ahora = new Date();
-    const fecha = ahora.toISOString().slice(0, 10);
-    const hora = ahora.toLocaleTimeString("en-GB");
+    const fecha = hoyBogota();
+    const hora = ahora.toLocaleTimeString("en-GB", { timeZone: "America/Bogota" });
     const sumaPorTipo = (tipo) => pagos.filter((p) => p.tx_formpg === tipo).reduce((s, p) => s + Number(p.db_vlrpag || 0), 0);
     const llevaEfectivo = pagos.some((p) => p.tx_formpg === "EF");
 
@@ -257,6 +258,8 @@ const NuevoReciboModal = ({ open, onClose, onReciboCreado, usuario }) => {
         tx_tipodoc: f.tx_tipodoc,
         in_clavesap: f.in_clavesap,
         in_nrosap: f.in_nrosap,
+        in_lineid: f.in_lineid,
+        in_transid: f.in_transid,
         fe_fechadoc: f.fe_fechadoc,
         fe_fechaven: f.fe_fechaven,
         db_saldofra: f.db_saldofra,
