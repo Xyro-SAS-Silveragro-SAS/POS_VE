@@ -16,7 +16,9 @@ export const API_REPORTE = import.meta.env.VITE_API_MTS_REPORTE || '';
 export const SL_BASE_URL = import.meta.env.VITE_SL_BASE_URL || '/api/sl';
 export const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/obtenerDestinosPosVe';
 export const N8N_CLIENTES_URL = import.meta.env.VITE_N8N_CLIENTES_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/clientesPosVe';
-export const N8N_CARGA_MASIVA_URL = import.meta.env.VITE_N8N_CARGA_MASIVA_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva';
+export const N8N_CARGA_MASIVA_URL = (import.meta.env.VITE_ENV === 'demo')
+  ? (import.meta.env.VITE_N8N_CARGA_MASIVA_URL_DEMO || 'https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva')
+  : (import.meta.env.VITE_N8N_CARGA_MASIVA_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva');
 export const N8N_GET_FACTURAS_URL = (import.meta.env.VITE_ENV === 'demo')
   ? (import.meta.env.VITE_N8N_GET_FACTURAS_URL_DEMO || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturasTest')
   : (import.meta.env.VITE_N8N_GET_FACTURAS_URL || 'https://n8n.srv1097949.hstgr.cloud/webhook/getFacturas');

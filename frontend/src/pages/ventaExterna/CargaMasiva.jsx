@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router";
 import TopBar from "../../components/global/TopBar";
 import Funciones from "../../helpers/Funciones";
 import { Download, FileSpreadsheet, UploadCloud, X } from "lucide-react";
-import plantilla from "../../assets/plantilla.csv?url";
+import plantilla from "../../assets/plantilla.xls?url";
 import { N8N_CARGA_MASIVA_URL } from "../../config/config.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { useConnection } from "../../context/ConnectionContext";
@@ -62,7 +62,7 @@ const CargaMasiva = () => {
   const handleDescargarPlantilla = () => {
     const link = document.createElement("a");
     link.href = plantilla;
-    link.download = "plantilla.csv";
+    link.download = "plantilla.xls";
     link.click();
   };
 

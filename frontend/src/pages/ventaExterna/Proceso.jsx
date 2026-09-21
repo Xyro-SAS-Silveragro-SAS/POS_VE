@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import ModalDetallesEntrega from "../../components/global/modal/ModalDetallesEntrega"
 import { API_MTS } from "../../config/config"
 import { getDestinosFromSL } from '../../services/serviceLayer';
+import * as XLSX from 'xlsx';
 
 
 const Proceso = () => {
@@ -120,6 +121,7 @@ const Proceso = () => {
             if(idProceso === undefined){
                 const nuevaCabeza = {
                     id_consec:uuidv4(),
+                    ordenCompra:0,
                     DocNum:0,
                     DocEntry:0,
                     in_tipo:tipoProceso,
@@ -533,6 +535,38 @@ const Proceso = () => {
         })
     };
 
+    const handleExportarExcel = () => {
+        if (!listaCarrito || listaCarrito.length === 0) {
+            Funciones.alerta("Atención", "No hay productos para exportar", "info", () => {});
+            return;
+        }
+
+        const filas = listaCarrito.map((item, index) => {
+            const precioUni = parseFloat(item.Precio) || 0;
+            const cantidad = parseInt(item.CantSolicitada) || 0;
+            const porcImpto = parseFloat(item.PorcImpto) || 0;
+            const subTotal = precioUni * cantidad;
+            const totalLinea = subTotal + (subTotal * porcImpto / 100);
+
+            return {
+                "#": index + 1,
+                "Código": item.ItemCode,
+                "Descripción": item.Articulo,
+                "Almacén": item.CodAlmacen,
+                "Precio Uni": precioUni,
+                "Cantidad": cantidad,
+                "SubTotal": subTotal,
+                "% Impto": porcImpto,
+                "Total Linea": totalLinea,
+            };
+        });
+
+        const hoja = XLSX.utils.json_to_sheet(filas);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, "Pedido");
+        XLSX.writeFile(libro, `pedido_${cabezaPedido.id_consec}.xlsx`);
+    };
+
     return (
         <>
             <TopBarProceso titulo={getTitulo()} toggleIA={toggleIA} listaCarrito={listaCarrito} tipoProceso={tipoProceso} idProceso={idProceso} startTour={startTour} setShowDetallesEntrega={abreModalDetallesEntrega} cabezaPedido={cabezaPedido}/>
@@ -741,6 +775,15 @@ const Proceso = () => {
                                     </svg>
                                 </button>
                             </>
+                        )}
+                        {cabezaPedido && cabezaPedido.in_tipo === 'pedidos' && listaCarrito.length > 0 && (
+                            <button onClick={handleExportarExcel} className="m-auto bg-[#217346] p-4 lg:w-[50%] font-bold rounded-lg flex items-center cursor-pointer justify-between">
+                                EXPORTAR A EXCEL
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-6">
+                                    <path fillRule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Z" clipRule="evenodd" />
+                                    <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                                </svg>
+                            </button>
                         )}
                         </div>
                     </div>
