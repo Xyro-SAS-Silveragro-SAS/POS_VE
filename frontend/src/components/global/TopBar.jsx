@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react"
 import ConnectionAlert from "./ConnectionAlert"
 import { useAuth } from "../../context/AuthContext"
 import { VERSION } from "../../config/config.jsx"
-import { ArrowLeft, ChevronDown, Receipt, LogOut, User } from "lucide-react"
+import { ArrowLeft, ChevronDown, Receipt, LogOut, User, Cloud } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 const TopBar = ({ startTour = null, showSimple = false }) => {
@@ -27,6 +27,11 @@ const TopBar = ({ startTour = null, showSimple = false }) => {
     const handleIrRecibosCaja = () => {
         setMenuUsuarioAbierto(false);
         navigate('/recibos-caja');
+    };
+
+    const handleIrPedidosNube = () => {
+        setMenuUsuarioAbierto(false);
+        navigate('/pedidos-nube');
     };
 
     const handleLogout = () => {
@@ -125,6 +130,14 @@ const TopBar = ({ startTour = null, showSimple = false }) => {
                                     >
                                         <Receipt size={16} className="text-[#546C4C]" />
                                         Recibos de caja
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleIrPedidosNube}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-left cursor-pointer"
+                                    >
+                                        <Cloud size={16} className="text-[#546C4C]" />
+                                        Buscar pedidos en la nube
                                     </button>
                                     <button
                                         type="button"
