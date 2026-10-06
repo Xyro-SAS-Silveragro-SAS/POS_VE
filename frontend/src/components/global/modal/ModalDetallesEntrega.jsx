@@ -4,7 +4,7 @@ import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
 import { getDestinosFromSL } from '../../../services/serviceLayer';
-import { endpointEditarCotizacion, limpiarCabeceraEdicion } from '../../../helpers/edicionCotizacion';
+import { endpointEditarCotizacion, limpiarCabeceraEdicion, elegirBodegaEdicion, aplicarBodegaCotizacion } from '../../../helpers/edicionCotizacion';
 const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
 
     const { isOnline }            = useConnection()
@@ -156,6 +156,13 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
             Funciones.alerta('Atención!', 'Debe seleccionar un destino', 'info', () => {});
         }
         else{
+            // En edición, si la bodega de la sesión es distinta a la de la cotización se pregunta con cuál enviarla
+            let bodegaEdicion = null;
+            if (esEdicion) {
+                bodegaEdicion = await elegirBodegaEdicion(cabezaPedido.tx_cod_alm_pos, localStorage.getItem('bodega'));
+                if (bodegaEdicion === null) return;
+            }
+
             const proceso = (tipoProceso === 'pedidos') ? 'pedido' : 'cotización';
             const mensajeConfirmacion = esEdicion
                 ? '¿Está seguro de guardar los cambios hechos a la cotización?'
@@ -175,7 +182,12 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
 
                 //actualizo la data de los detalles finales
                 await db.cabeza.update(parseInt(idProceso), dataGuardar);
-                
+
+                // cabecera y líneas quedan con la bodega elegida para la edición
+                if (bodegaEdicion !== null) {
+                    await aplicarBodegaCotizacion(idProceso, bodegaEdicion);
+                }
+
                 // consulto la cabeza
                 const cabeza = await db.cabeza.get(parseInt(idProceso));
                 if (!cabeza) {

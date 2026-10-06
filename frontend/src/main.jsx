@@ -38,6 +38,7 @@ createRoot(root).render(
 
                     </Routes>
                 </BrowserRouter>
+                <ReloadPrompt />
             </AuthProvider>
         </TourContextProvider>
       </TourProvider>

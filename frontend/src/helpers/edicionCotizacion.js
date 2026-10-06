@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2';
 import { db } from "../db/db";
 
 // Endpoint (PUT) que recibe la cotización editada (mismo JSON que capturarPedido)
@@ -31,6 +32,38 @@ export const descartarEdicionCotizacion = async (idCabeza) => {
         await db.lineas.where('in_id_cabeza').equals(cabeza.id).delete();
         await db.lineas.bulkAdd(lineas);
         await db.cabeza.put(cabezaOriginal);
+    });
+};
+
+// Si la bodega de la sesión es distinta a la de la cotización, pregunta con cuál enviar la edición.
+// Retorna la bodega elegida, o null si el usuario cierra el mensaje (no se envía nada)
+export const elegirBodegaEdicion = async (bodegaCotizacion, bodegaSesion) => {
+    if (!bodegaSesion || bodegaSesion === '0' || bodegaSesion === bodegaCotizacion) {
+        return bodegaCotizacion;
+    }
+
+    const resultado = await Swal.fire({
+        title: 'Atención!',
+        html: `Se detectó que inició sesión en la bodega <b>${bodegaSesion}</b>, pero esta cotización está en la bodega <b>${bodegaCotizacion || 'Sin Bodega'}</b>.<br/><br/>¿A qué bodega desea enviar la edición de la cotización?`,
+        icon: 'question',
+        showDenyButton: true,
+        showCloseButton: true,
+        confirmButtonText: `USAR ${bodegaSesion} (SESIÓN)`,
+        denyButtonText: `MANTENER ${bodegaCotizacion || 'ACTUAL'}`,
+        denyButtonColor: '#6b7280',
+        backdrop: 'rgba(0,0,0,0.5)',
+    });
+
+    if (resultado.isConfirmed) return bodegaSesion;
+    if (resultado.isDenied) return bodegaCotizacion;
+    return null;
+};
+
+// Deja la cabecera y todas las líneas de la cotización con la bodega indicada
+export const aplicarBodegaCotizacion = async (idCabeza, bodega) => {
+    await db.transaction('rw', db.cabeza, db.lineas, async () => {
+        await db.cabeza.update(parseInt(idCabeza), { tx_cod_alm_pos: bodega });
+        await db.lineas.where('in_id_cabeza').equals(parseInt(idCabeza)).modify({ CodAlmacen: bodega });
     });
 };
 
