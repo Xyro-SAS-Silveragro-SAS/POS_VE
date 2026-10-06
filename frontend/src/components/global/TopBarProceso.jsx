@@ -38,7 +38,8 @@ const TopBarProceso = ({titulo = '', toggleIA = null, listaCarrito = [], tipoPro
 
 
     const handleBack = async() => {
-        if(listaCarrito.length === 0){
+        // Una cotización en edición ya existe en el servidor, no se borra al salir
+        if(listaCarrito.length === 0 && cabezaPedido?.en_edicion !== 1){
             const titulo = (tipoProceso === 'cotizaciones') ? 'esta cotización' : 'este pedido'
             Funciones.confirmacion('Atención!',`No ha agregado items aún, si regresa ${titulo} se eliminará`,"info", async () => {
                 //elimino el pedido

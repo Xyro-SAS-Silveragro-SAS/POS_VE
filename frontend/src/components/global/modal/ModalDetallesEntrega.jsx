@@ -4,9 +4,15 @@ import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
 import { getDestinosFromSL } from '../../../services/serviceLayer';
+import { endpointEditarCotizacion, limpiarCabeceraEdicion } from '../../../helpers/edicionCotizacion';
 const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
-    
+
     const { isOnline }            = useConnection()
+    const esEdicion               = cabezaPedido?.en_edicion === 1
+    // En edición se conserva la fecha de creación y se registra la fecha de modificación
+    const fechaActualizacion      = () => esEdicion
+                                        ? { dt_fecha_mod: new Date().toISOString() }
+                                        : { dt_fecha_reg: new Date().toISOString() }
     const [cargando, setCargando] = useState(false)
     const [destinosLocal, setDestinosLocal] = useState(destinos || [])
     
@@ -113,7 +119,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
                     fechaEntrega: formData.fechaEntrega,
                     tipoEnvio: formData.tipoEnvio,
                     observaciones: formData.observaciones,
-                    dt_fecha_reg: new Date().toISOString(),
+                    ...fechaActualizacion(),
                 }
                 //actualizo la data de los detalles finales
                 await db.cabeza.update(parseInt(idProceso), dataGuardar);
@@ -121,7 +127,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
             guardaCabeza()
         }
 
-    },[formData, idProceso, isOpen])
+    },[formData, idProceso, isOpen, esEdicion])
 
 
     const handleChange = (e) => {
@@ -151,7 +157,10 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
         }
         else{
             const proceso = (tipoProceso === 'pedidos') ? 'pedido' : 'cotización';
-            Funciones.confirmacion('Atención!', `¿Está seguro de sincronizar los datos ingresados en el ${proceso}?`, 'info', async () => {
+            const mensajeConfirmacion = esEdicion
+                ? '¿Está seguro de guardar los cambios hechos a la cotización?'
+                : `¿Está seguro de sincronizar los datos ingresados en el ${proceso}?`;
+            Funciones.confirmacion('Atención!', mensajeConfirmacion, 'info', async () => {
                 const destinoSplit = formData.destino.split('|');
                 //valido campos
                 const dataGuardar = {
@@ -161,9 +170,9 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
                     fechaEntrega: formData.fechaEntrega,
                     tipoEnvio: formData.tipoEnvio,
                     observaciones: formData.observaciones,
-                    dt_fecha_reg: new Date().toISOString(),
+                    ...fechaActualizacion(),
                 }
-                
+
                 //actualizo la data de los detalles finales
                 await db.cabeza.update(parseInt(idProceso), dataGuardar);
                 
@@ -179,15 +188,31 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
                     .equals(parseInt(idProceso))
                     .toArray();
 
+                const cabezaEnEdicion = cabeza.en_edicion === 1;
                 const dataSincroniza = {
                     identificador: cabeza.id_consec || '',
                     tx_contenido: {
-                        cabecera: cabeza,
+                        cabecera: limpiarCabeceraEdicion(cabeza),
                         lineas: lineas
                     }
                 }
                 //valido si estamos online para enviar a sincronizar
-                if(isOnline){
+                if(isOnline && cabezaEnEdicion){
+                    const respuesta = await api.put(endpointEditarCotizacion(cabeza.id_consec), dataSincroniza)
+
+                    if(respuesta && respuesta.continuar === 1){
+                        Funciones.alerta('Éxito!', respuesta.mensaje || 'Cotización actualizada correctamente', 'success', async() => {
+                            //cierro la edición y descarto la copia de respaldo
+                            await db.cabeza.update(parseInt(idProceso), { sync: 1, en_edicion: 0, snapshot_edicion: null });
+                            handleRefresh()
+                        });
+                    }
+                    else{
+                        //la cotización sigue en edición para poder reintentar o descartar los cambios
+                        Funciones.alerta('Atención!', respuesta?.mensaje || 'No se pudo actualizar la cotización', 'info', () => {});
+                    }
+                }
+                else if(isOnline){
                     const items = await api.post('api/ventaExterna/capturarPedido',dataSincroniza)
                     /*
                         Estado 1: Sincronizado SAP
@@ -347,7 +372,7 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-8 cursor-pointer sincronizarBtn mr-2" >
                                 <path fillRule="evenodd" d="M10.5 3.75a6 6 0 0 0-5.98 6.496A5.25 5.25 0 0 0 6.75 20.25H18a4.5 4.5 0 0 0 2.206-8.423 3.75 3.75 0 0 0-4.133-4.303A6.001 6.001 0 0 0 10.5 3.75Zm2.03 5.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 1 0 1.06 1.06l1.72-1.72v4.94a.75.75 0 0 0 1.5 0v-4.94l1.72 1.72a.75.75 0 1 0 1.06-1.06l-3-3Z" clipRule="evenodd" />
                             </svg>
-                            SINCRONIZAR {(titulo === 'pedidos') ? 'PEDIDO' : 'COTIZACIÓN'}
+                            {esEdicion ? 'GUARDAR CAMBIOS' : `SINCRONIZAR ${(titulo === 'pedidos') ? 'PEDIDO' : 'COTIZACIÓN'}`}
                         </button>
                     </div>
                 </div>

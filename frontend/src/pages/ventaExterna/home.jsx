@@ -14,7 +14,8 @@ import Funciones from "../../helpers/Funciones";
 import api from "../../services/apiService";
 import { API_MTS } from "../../config/config";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, Pencil, Undo2 } from "lucide-react";
+import { iniciarEdicionCotizacion, descartarEdicionCotizacion } from "../../helpers/edicionCotizacion";
 
 const ITEMS_POR_PAGINA = 10;
 
@@ -273,6 +274,30 @@ const Home = () => {
     })
   }
 
+  const handleEditarCotizacion = (infoCotizacion) => {
+    Funciones.confirmacion("Atención","La cotización quedará en modo edición hasta que vuelva a enviarla. ¿Desea continuar?",'info', async () => {
+      try {
+        await iniciarEdicionCotizacion(infoCotizacion.id);
+        navigate(`/proceso/cotizaciones/${infoCotizacion.id}`);
+      } catch (error) {
+        console.error('Error al iniciar la edición:', error);
+        Funciones.alerta("Error","No se pudo poner la cotización en modo edición","error");
+      }
+    }, () => {}, "EDITAR", "CANCELAR")
+  }
+
+  const handleDescartarEdicion = (infoCotizacion) => {
+    Funciones.confirmacion("Atención","Se perderán los cambios hechos a la cotización y volverá a quedar como estaba. ¿Desea continuar?",'info', async () => {
+      try {
+        await descartarEdicionCotizacion(infoCotizacion.id);
+        actualizaProcesos();
+      } catch (error) {
+        console.error('Error al descartar la edición:', error);
+        Funciones.alerta("Error","No se pudieron descartar los cambios","error");
+      }
+    }, () => {}, "DESCARTAR", "CANCELAR")
+  }
+
 
   return (
     <>
@@ -339,7 +364,21 @@ const Home = () => {
             procesosPaginados.map((pedido, index) => (
               <div role="button" key={index} className="grid grid-cols-12 px-5 py-4 border-b-1 border-gray-200  w-full cursor-pointer relative" >
 
-                {pedido && pedido.sync === 0 && (
+                {pedido && pedido.in_tipo === 'cotizaciones' && pedido.sync === 1 && (
+                    <div onClick={()=>{handleEditarCotizacion(pedido)}} className="absolute bottom-4 right-4 flex gap-2 cursor-pointer items-center text-gray-700">
+                        <Pencil size={16} />
+                        Editar
+                    </div>
+                )}
+
+                {pedido && pedido.en_edicion === 1 && (
+                    <div onClick={()=>{handleDescartarEdicion(pedido)}} className="absolute bottom-4 right-4 flex gap-2 cursor-pointer items-center text-red-500">
+                        <Undo2 size={16} />
+                        Descartar cambios
+                    </div>
+                )}
+
+                {pedido && pedido.sync === 0 && pedido.en_edicion !== 1 && (
                     <div onClick={()=>{handleBorrarPreliminar(pedido)}} className="absolute bottom-4 right-4 flex gap-2 cursor-pointer items-center text-red-500">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4">
                           <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clipRule="evenodd" />
@@ -391,7 +430,9 @@ const Home = () => {
 
                     <strong>Fecha: </strong> { pedido.dt_fecha_reg ? new Date(pedido.dt_fecha_reg).toLocaleDateString() : 'N/A'}<br/>
                     <strong>Valor: </strong> ${ pedido.in_vlr_total ? pedido.in_vlr_total.toLocaleString('es-CO') : 'N/A'}<br/>
-                    { pedido && pedido.sync === 0 ? (
+                    { pedido && pedido.en_edicion === 1 ? (
+                      <small className=" bg-amber-500 text-white py-[2px] px-4 font-bold rounded-lg mr-2">EN EDICIÓN</small>
+                    ) : pedido && pedido.sync === 0 ? (
                       <small className=" bg-red-600 text-white py-[2px] px-4 font-bold rounded-lg mr-2">SIN SINCRONIZAR</small>
                     ) : (
                       <small className=" bg-green-600 text-white py-[2px] px-4 font-bold rounded-lg mr-2">SINCRONIZADO</small>

@@ -245,6 +245,8 @@ const Proceso = () => {
         
         if (tipoProceso?.toLowerCase() === 'pedidos') {
             return `Pedido ****${ultimosDigitos}`;
+        } else if (cabezaPedido.en_edicion === 1) {
+            return `Editando cotización ****${ultimosDigitos}`;
         } else {
             return `Cotización ****${ultimosDigitos}`;
         }
