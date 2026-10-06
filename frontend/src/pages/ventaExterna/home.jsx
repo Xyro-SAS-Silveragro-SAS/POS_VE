@@ -15,7 +15,7 @@ import api from "../../services/apiService";
 import { API_MTS } from "../../config/config";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, Pencil, Undo2 } from "lucide-react";
-import { iniciarEdicionCotizacion, descartarEdicionCotizacion } from "../../helpers/edicionCotizacion";
+import { iniciarEdicionCotizacion, descartarEdicionCotizacion, elegirBodegaEdicion } from "../../helpers/edicionCotizacion";
 
 const ITEMS_POR_PAGINA = 10;
 
@@ -277,7 +277,12 @@ const Home = () => {
   const handleEditarCotizacion = (infoCotizacion) => {
     Funciones.confirmacion("Atención","La cotización quedará en modo edición hasta que vuelva a enviarla. ¿Desea continuar?",'info', async () => {
       try {
-        await iniciarEdicionCotizacion(infoCotizacion.id);
+        // Si la sucursal de la sesión es distinta a la de la cotización, el usuario decide con cuál editar
+        const bodegaCotizacion = infoCotizacion.tx_cod_alm_pos;
+        const bodegaEdicion = await elegirBodegaEdicion(bodegaCotizacion, localStorage.getItem('bodega'));
+        if (bodegaEdicion === null) return;
+
+        await iniciarEdicionCotizacion(infoCotizacion.id, bodegaEdicion !== bodegaCotizacion ? bodegaEdicion : null);
         navigate(`/proceso/cotizaciones/${infoCotizacion.id}`);
       } catch (error) {
         console.error('Error al iniciar la edición:', error);
