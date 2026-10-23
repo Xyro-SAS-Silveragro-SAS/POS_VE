@@ -11,11 +11,11 @@ import ButtonNew from "../../components/ventaExterna/ButtonNew";
 import ModalClientes from "../../components/global/modal/ModalClientes";
 import ModalProductos from "../../components/global/modal/ModalProductos";
 import Funciones from "../../helpers/Funciones";
-import api from "../../services/apiService";
 import { API_MTS } from "../../config/config";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, Pencil, Undo2 } from "lucide-react";
+import { SlidersHorizontal, X, ChevronLeft, ChevronRight, Search, Pencil, Undo2, RefreshCw } from "lucide-react";
 import { iniciarEdicionCotizacion, descartarEdicionCotizacion, elegirBodegaEdicion } from "../../helpers/edicionCotizacion";
+import { pedidoActualizable, consultarEstadoPedido, guardarEstadoPedido, verificarEstadosPedidos } from "../../helpers/estadoPedidos";
 
 const ITEMS_POR_PAGINA = 10;
 
@@ -35,7 +35,8 @@ const Home = () => {
   const [busqueda, setBusqueda]                                         = useState('')
   const [showClientes, setShowClientes]                                 = useState(false);
   const [showProductos, setShowProductos]                               = useState(false);
-  const { 
+  const [progresoEstados, setProgresoEstados]                           = useState(null) // { procesados, total } mientras se actualizan estados
+  const {
     startTour
   } = useTourContext();
 
@@ -215,32 +216,17 @@ const Home = () => {
     }
   };
 
-  const verificaEstado = async (id_consec, idProceso) => { 
+  const verificaEstado = async (id_consec, idProceso) => {
     try {
-      const pedido = await api.get('api/pedidos/uuid/' + id_consec);
-      console.log(pedido);
-      
-      // Verifica si la respuesta es válida y contiene los datos necesarios
-      if (
-        pedido &&
-        typeof pedido === 'object' &&
-        pedido.mensaje &&
-        pedido.DocEntry !== undefined &&
-        pedido.DocNum !== undefined &&
-        pedido.in_estado !== undefined
-      ) {
+      const pedido = await consultarEstadoPedido(id_consec);
+
+      if (pedido) {
         Funciones.alerta(
           "Estado del pedido",
           pedido.mensaje,
           "info",
           async () => {
-            await db.cabeza.update(parseInt(idProceso), {
-              sync: 1,
-              DocEntry: pedido.DocEntry,
-              DocNum: pedido.DocNum,
-              in_estado: pedido.in_estado,
-              tx_comentarios: pedido.tx_comentarios
-            });
+            await guardarEstadoPedido(idProceso, pedido);
             actualizaProcesos();
           }
         );
@@ -261,6 +247,40 @@ const Home = () => {
         "error"
       );
     }
+  }
+
+  // Pedidos visibles (según filtros y búsqueda) cuyo estado aún puede cambiar en la nube
+  const pedidosActualizables = botonActivo === 'pedidos' ? procesosBuscados.filter(pedidoActualizable) : []
+
+  const actualizarEstadosMasivo = () => {
+    if (!isOnline) {
+      Funciones.alerta("Sin conexión", "Necesita conexión a internet para actualizar los estados", "info");
+      return;
+    }
+    if (pedidosActualizables.length === 0) {
+      Funciones.alerta("Atención", "No hay pedidos pendientes por actualizar con los filtros actuales", "info");
+      return;
+    }
+
+    Funciones.confirmacion("Atención", `Se consultará el estado de ${pedidosActualizables.length} pedido(s) en la nube. ¿Desea continuar?`, 'info', async () => {
+      setProgresoEstados({ procesados: 0, total: pedidosActualizables.length });
+      try {
+        const resumen = await verificarEstadosPedidos(pedidosActualizables, {
+          onProgreso: (procesados, total) => setProgresoEstados({ procesados, total })
+        });
+        await actualizaProcesos();
+        Funciones.alerta(
+          "Estados actualizados",
+          `Pedidos consultados: <b>${resumen.total}</b><br/>Cambiaron de estado: <b>${resumen.cambiaron}</b><br/>Sin cambios: <b>${resumen.sinCambio}</b><br/>No se pudieron consultar: <b>${resumen.fallidos}</b>`,
+          resumen.fallidos > 0 ? "warning" : "success"
+        );
+      } catch (error) {
+        console.error('Error al actualizar estados:', error);
+        Funciones.alerta("Error", "Se presentó un error al actualizar los estados", "error");
+      } finally {
+        setProgresoEstados(null);
+      }
+    }, () => {}, "ACTUALIZAR", "CANCELAR")
   }
 
   const handleBorrarPreliminar = (infoPedido) => {
@@ -357,6 +377,19 @@ const Home = () => {
                       className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent"
                   />
               </div>
+              {botonActivo === 'pedidos' && (
+                  <button
+                      type="button"
+                      onClick={actualizarEstadosMasivo}
+                      disabled={progresoEstados !== null}
+                      className="mt-2 w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-wait cursor-pointer"
+                  >
+                      <RefreshCw size={15} className={progresoEstados ? 'animate-spin' : ''} />
+                      {progresoEstados
+                          ? `Actualizando estados ${progresoEstados.procesados}/${progresoEstados.total}...`
+                          : `Actualizar estados (${pedidosActualizables.length})`}
+                  </button>
+              )}
           </div>
 
           <div className="flex flex-wrap w-full listaItemsHome">
@@ -447,8 +480,8 @@ const Home = () => {
                       <div className="flex items-center gap-2 mt-2">
                         {pedido && getEstadoBadge(pedido.in_estado, pedido.tx_comentarios)}
                       
-                        {([1, 2, 3, 4, 5].includes(Number(pedido.in_estado)) || pedido.in_estado === undefined || pedido.in_estado === null) && (
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
+                        {(Number(pedido.in_estado) === 1 || pedidoActualizable(pedido)) && (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 cursor-pointer" title="Actualizar estado" onClick={() => verificaEstado(pedido.id_consec, pedido.id)}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
                         )}
