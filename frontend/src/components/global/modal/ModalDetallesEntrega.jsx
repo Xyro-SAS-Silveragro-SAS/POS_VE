@@ -4,7 +4,7 @@ import { db } from '../../../db/db';
 import { useConnection } from '../../../context/ConnectionContext';
 import api from '../../../services/apiService';
 import { getDestinosFromSL } from '../../../services/serviceLayer';
-import { endpointEditarCotizacion, limpiarCabeceraEdicion } from '../../../helpers/edicionCotizacion';
+import { endpointEditarCotizacion, limpiarCabeceraEdicion, alinearBodegaLineas } from '../../../helpers/edicionCotizacion';
 const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProceso=null, tipoProceso=null, handleRefresh={handleRefresh}, cabezaPedido=null }) => {
 
     const { isOnline }            = useConnection()
@@ -175,7 +175,12 @@ const ModalDetallesEntrega = ({ isOpen, onClose, titulo, destinos=null, idProces
 
                 //actualizo la data de los detalles finales
                 await db.cabeza.update(parseInt(idProceso), dataGuardar);
-                
+
+                // en edición, todas las líneas quedan con la bodega de la cabecera (elegida al iniciar la edición)
+                if (esEdicion) {
+                    await alinearBodegaLineas(idProceso);
+                }
+
                 // consulto la cabeza
                 const cabeza = await db.cabeza.get(parseInt(idProceso));
                 if (!cabeza) {

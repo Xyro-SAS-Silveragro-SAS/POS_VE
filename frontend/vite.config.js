@@ -10,6 +10,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // El registro del SW lo hace src/components/ReloadPrompt.jsx (muestra el aviso de nueva versión)
+      injectRegister: false,
+      // Igual que antes: el SW nuevo se activa solo y ReloadPrompt avisa al usuario para recargar
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       includeAssets: ['favicon.png', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'POS VENTA EXTERNA',
