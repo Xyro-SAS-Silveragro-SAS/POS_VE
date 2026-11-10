@@ -23,6 +23,7 @@
 /frontend/*.sln
 /frontend/*.sw?
 /frontend/.env.production
+/frontend/.env
 
 
 /backend/node_modules
