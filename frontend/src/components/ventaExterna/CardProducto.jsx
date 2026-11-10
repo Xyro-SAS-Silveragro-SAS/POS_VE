@@ -20,6 +20,10 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
     const [lotesData, setLotesData]             = useState([]);
     const [loadingLotes, setLoadingLotes]       = useState(false);
     const { currentUser }                       = useAuth();
+    const porcentajeDescuento = Number(producto?.in_dto_pos) || 0;
+    const totalSolicitado = (Number(producto?.Precio) || 0)
+        * (Number(producto?.CantSolicitada) || 0);
+    const totalConDescuento = Funciones.precioAhora(totalSolicitado, porcentajeDescuento);
 
     useEffect(() => {
         setProductos(item)
@@ -236,7 +240,8 @@ const CardProducto = ({index=null, item=null, handleAddToCar=null, buttonAdd=tru
                     </span>
 
                     <span className='text-md w-full'>
-                        <strong className="mr-1">V. Total:</strong> ${Funciones.formatearPrecio(producto.Precio * (producto.CantSolicitada || 0))}
+                        <strong className="mr-1">V. Total:</strong> ${Funciones.formatearPrecio(totalConDescuento)}
+                        {porcentajeDescuento > 0 && ` (Dto. ${Funciones.formatearPrecio(porcentajeDescuento)}%)`}
                     </span>
 
                     <span className='text-md w-full'>

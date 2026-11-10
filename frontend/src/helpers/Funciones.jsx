@@ -19,6 +19,32 @@ const Funciones = {
         }
         return precio;
     },
+    calcularTotalesLineas: (lineas = []) => {
+        let subtotal = 0;
+        let descuento = 0;
+        let impuestos = 0;
+
+        lineas.forEach((linea) => {
+            const precio = Number(linea.Precio) || 0;
+            const cantidad = Number(linea.CantSolicitada) || 0;
+            const cantidadBonificada = Number(linea.CantBonificada) || 0;
+            const porcentajeImpuesto = Number(linea.PorcImpto) || 0;
+            const porcentajeDescuento = Number(linea.in_dto_pos) || 0;
+            const subtotalLinea = precio * cantidad;
+            const descuentoLinea = subtotalLinea * porcentajeDescuento / 100;
+
+            subtotal += subtotalLinea;
+            descuento += descuentoLinea;
+            impuestos += (subtotalLinea - descuentoLinea) * porcentajeImpuesto / 100;
+            impuestos += precio * cantidadBonificada * porcentajeImpuesto / 100;
+        });
+
+        return {
+            in_subtot_pos: subtotal,
+            in_vlr_total_imp: impuestos,
+            in_vlr_total: subtotal + impuestos - descuento,
+        };
+    },
     alertaBox: (titulo, mensaje, tipo, callback = () => {}, callbackCancel = () => {}, btnAceptar="ACEPTAR", btnCancelar="CANCELAR", tipoCaja='text', placeholder = "...", textoInicial = "", textoSiVacio="") => {
         const MySwal = withReactContent(Swal)
         MySwal.fire({
