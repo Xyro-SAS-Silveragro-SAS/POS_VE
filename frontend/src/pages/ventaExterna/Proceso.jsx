@@ -377,42 +377,7 @@ const Proceso = () => {
             }
 
 
-            let descuento = 0;
-            let impuestosBon = 0;
-            let totalNoImp = 0;
-            let impuestos = 0;
-            let total = 0;
-
-            // Iterar sobre cada producto en el carrito
-            for (let item of listaCarrito) {
-                let descAplicar = 0;
-                let subtotalItem = (parseFloat(item.Precio) || 0) * (parseInt(item.CantSolicitada) || 0);
-                let descto = 0;
-                
-                if (descAplicar > 0) {
-                    descto = ((subtotalItem * descAplicar) / 100);
-                    descuento += descto;
-                }
-                
-                // Calcular impuestos para productos bonificados
-                impuestosBon = 0;
-                if ((parseInt(item.CantBonificada) || 0) > 0) {
-                    impuestosBon = ((parseFloat(item.PorcImpto) || 0) / 100) * ((parseFloat(item.Precio) || 0) * (parseInt(item.CantBonificada) || 0));
-                }
-                
-                // Acumular totales
-                totalNoImp += subtotalItem;
-                impuestos += ((parseFloat(item.PorcImpto) || 0) / 100) * (parseFloat(subtotalItem) - parseFloat(descto));
-                impuestos += impuestosBon;
-            }
-            
-            total = (totalNoImp + impuestos) - descuento;
-
-            const dataUpdate = {
-                in_vlr_total: total,
-                in_subtot_pos: totalNoImp,
-                in_vlr_total_imp: impuestos
-            };
+            const dataUpdate = Funciones.calcularTotalesLineas(listaCarrito);
             await db.cabeza.update(cabezaPedido.id, dataUpdate);
             
             // Actualizar el estado local inmediatamente

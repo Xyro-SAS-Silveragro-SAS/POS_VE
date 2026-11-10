@@ -101,7 +101,12 @@ const CargaMasiva = () => {
         const { cabecera, lineas } = pedido;
         if (!cabecera) continue;
 
-        const cabeceraNueva = { ...cabecera, sync: 0, masivo: 1 };
+        const cabeceraNueva = {
+          ...cabecera,
+          ...Funciones.calcularTotalesLineas(lineas || []),
+          sync: 0,
+          masivo: 1,
+        };
         cabeceraNueva.U_Tipoenvio = TIPOS_ENVIO[cabeceraNueva.U_Tipoenvio] || cabeceraNueva.U_Tipoenvio;
         delete cabeceraNueva.id;
         const idLocal = await db.cabeza.add(cabeceraNueva);
