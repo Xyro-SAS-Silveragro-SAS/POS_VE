@@ -1,8 +1,8 @@
 # Documentación Técnica y de Soporte - POS VENTA EXTERNA (POSVE)
 
 **Sistema de Pedidos para Venta Externa Silveragro S.A.S.**  
-**Versión: 1.2.6**  
-**Última actualización: Marzo 2026**
+**Versión: 1.3.7.1**  
+**Última actualización: Noviembre 2026**
 
 ---
 
@@ -14,9 +14,10 @@
 4. [Configuración del Entorno](#configuración-del-entorno)
 5. [Arquitectura Técnica](#arquitectura-técnica)
 6. [Funcionalidades Principales](#funcionalidades-principales)
-7. [Resolución de Problemas Comunes](#resolución-de-problemas-comunes)
-8. [Mantenimiento y Actualizaciones](#mantenimiento-y-actualizaciones)
-9. [APIs y Servicios Externos](#apis-y-servicios-externos)
+7. [Recibos de Caja, Autorización y Notas Crédito](#recibos-de-caja-autorización-y-notas-crédito)
+8. [Resolución de Problemas Comunes](#resolución-de-problemas-comunes)
+9. [Mantenimiento y Actualizaciones](#mantenimiento-y-actualizaciones)
+10. [APIs y Servicios Externos](#apis-y-servicios-externos)
 
 ---
 
@@ -27,11 +28,18 @@
 POS Venta Externa es una **Progressive Web App (PWA)** diseñada para vendedores externos de Silveragro S.A.S. que permite:
 
 - ✅ Crear pedidos y cotizaciones de forma offline/online
+- ✏️ Editar cotizaciones ya sincronizadas
+- 📥 Cargar pedidos masivamente desde Excel
 - 🎤 Procesar pedidos mediante comandos de voz usando IA (Gemini)
 - 🔍 Búsqueda inteligente de productos y clientes
+- 💵 Registrar **Recibos de Caja** (pagos de clientes) aplicados a facturas, notas crédito y pagos recibidos
+- ☁️ Consultar pedidos en la nube y actualizar sus estados en bloque
+- 📈 Acceder al **Informe de Operaciones** del vendedor
 - 📊 Sincronización con SAP Business One
 - 📱 Funciona en dispositivos móviles, tablets y computadores
 - 💾 Almacenamiento local para trabajo sin conexión
+
+> 💡 **Relación con MTS NEW (SOFIA)**: los Recibos de Caja se **crean** en POSVE, pero se **autorizan, rechazan y sincronizan con SAP** desde MTS NEW (módulo de Cartera). Las Notas Crédito por descuento de pronto pago se crean automáticamente en SAP al sincronizar el recibo.
 
 ### Componentes del Sistema
 
@@ -222,11 +230,13 @@ API_MTS_NEW=https://demoapi.mts.xyroapps.com.co/api/
 
 ### Variables de Entorno - Frontend
 
-Archivo: `frontend/.env.production`
+Archivos: `frontend/.env` (producción) y `frontend/.env.development` (demo/desarrollo)
+
+> ⚠️ **Importante**: `frontend/.env` está excluido del repositorio (`.gitignore`). Al publicar una nueva versión hay que actualizar `VITE_VERSION` directamente en el `.env` del servidor o del equipo desde donde se compila; ese cambio **no viaja en los commits**.
 
 ```bash
-# Versión de la aplicación
-VITE_VERSION=1.2.6
+# Versión de la aplicación (se muestra en la barra superior como V1.3.7.1)
+VITE_VERSION=1.3.7.1
 
 # API Backend de búsqueda vectorial
 VITE_API_URL=http://apisearch.xyroapps.com.co/api/
@@ -263,6 +273,25 @@ VITE_URL_SITE=https://posve.xyroapps.com.co/
 
 # Reportes
 VITE_API_MTS_REPORTE=https://xyrosap.com.co/mts_silveragro/reportePosVe.php
+
+# --- Webhooks N8N (opcionales: si no se definen se usan los valores por defecto de config.jsx) ---
+# Clientes del vendedor (en demo usa VITE_N8N_CLIENTES_URL_DEMO)
+VITE_N8N_CLIENTES_URL=https://n8n.srv1097949.hstgr.cloud/webhook/clientesPosVe
+# Carga masiva de pedidos desde Excel
+VITE_N8N_CARGA_MASIVA_URL=https://n8n.srv1097949.hstgr.cloud/webhook/cargaMasiva
+# Facturas/documentos pendientes del cliente para el Recibo de Caja (en demo: getFacturasTest)
+VITE_N8N_GET_FACTURAS_URL=https://n8n.srv1097949.hstgr.cloud/webhook/getFacturas
+# Listas para los medios de pago del Recibo de Caja
+VITE_N8N_CUENTAS_EFECTIVO_URL=.../listas/cuentasefectivo
+VITE_N8N_CUENTAS_BANCOS_URL=.../listas/cuentasbancos
+VITE_N8N_TARJETAS_URL=.../listas/tarjetas
+VITE_N8N_BANCOS_URL=.../listas/bancos
+# Configuración general de POSVE (serie de numeración de los Recibos de Caja)
+VITE_N8N_CONFIG_POSVE_URL=https://n8n.srv1097949.hstgr.cloud/webhook/configPOSVE
+# Carga de comprobantes de pago (fotos/PDF)
+VITE_UPLOAD_FILE_URL=https://n8n.srv1097949.hstgr.cloud/webhook/uploadFiles
+VITE_ARCHIVOS_BASE_URL=http://72.61.3.141:3030
+VITE_CARPETA_ARCHIVO=recibosCaja
 ```
 
 ---
@@ -398,6 +427,27 @@ Usuario → Selecciona Cliente
          POST → API MTS → SAP Business One
 ```
 
+#### 3. Recibo de Caja (requiere conexión)
+
+```
+POSVE (vendedor)
+   → Selecciona cliente → N8N getFacturas (documentos pendientes)
+   → Registra medios de pago y adjunta comprobantes → N8N uploadFiles
+   → POST API MTS /api/cartera/recibos-caja
+          ↓
+   Estado 6 "Por consignar" (si lleva efectivo)  ó  Estado 4 "Por autorizar"
+          ↓  (vendedor convierte el efectivo a consignación → pasa a 4)
+MTS NEW (cartera) → Autorizaciones de Recibos de Caja
+   → Autoriza → Estado 1 (en cola) → Job SincronizarReciboCajaSAP
+          ↓
+   Service Layer: cartera/crear (Pago Recibido en SAP)
+          ↓  OK → Estado 2 "Sincronizado"   |   Falla → Estado 5 "Error"
+   Si hay descuentos de pronto pago → Service Layer: cartera/notaCredito/crear
+   Se envía correo de confirmación al cliente (N8N)
+```
+
+> Los Recibos de Caja **no se guardan en IndexedDB**: se consultan y crean siempre contra la API MTS, por lo que este módulo **no funciona offline**.
+
 ### Base de Datos Local (IndexedDB)
 
 #### Esquema de Tablas
@@ -461,6 +511,9 @@ Usuario → Selecciona Cliente
   in_vlr_total: number,
   in_estado: number,     // 0=Borrador, 1=Enviado
   sync: boolean,         // Estado de sincronización
+  masivo: number,        // (v2 del esquema) Pedido creado por carga masiva
+  en_edicion: number,    // 1 = cotización sincronizada que se está editando
+  snapshot_edicion: obj, // Copia de cabeza + líneas para poder descartar la edición
   // ... otros campos
 }
 ```
@@ -475,7 +528,9 @@ Usuario → Selecciona Cliente
   Precio: number,
   CantSolicitada: number,
   CantBonificada: number,
+  in_dto_pos: number,    // % de descuento de la línea
   Impuesto: number,
+  CodAlmacen: string,    // Bodega de la línea (se alinea con la de la cabecera al enviar)
   sync: boolean,
   // ... otros campos
 }
@@ -527,6 +582,26 @@ Usuario → Selecciona Cliente
 5. Configurar fecha de entrega
 6. Guardar como borrador o enviar a SAP
 
+#### Descuentos por línea
+- Cada línea puede tener un **% de descuento** (`in_dto_pos`), incluidos los pedidos de carga masiva.
+- La tarjeta del producto muestra el valor total con el descuento aplicado (ej. `V. Total: $90.000 (Dto. 10%)`).
+- El total del pedido se calcula como: subtotal − descuentos + impuestos (el IVA se calcula sobre el valor ya descontado).
+
+#### Exportar pedido a Excel
+- Desde el detalle de un pedido, el botón **"EXPORTAR A EXCEL"** descarga el archivo `pedido_{id}.xlsx` con sus productos.
+
+#### Carga Masiva de Pedidos (`/carga-masiva`)
+1. Descargar la plantilla (`plantilla.xls`) desde la misma pantalla
+2. Diligenciarla y subirla (solo se aceptan archivos `.xlsx` o `.xls`)
+3. El archivo se envía a N8N (`cargaMasiva`) junto con la bodega, el código SAP y el nombre del vendedor
+4. Los pedidos creados quedan marcados como masivos (`masivo`) en la base local
+
+#### Edición de Cotizaciones
+Una cotización ya sincronizada se puede modificar:
+1. Pulsar **Editar** en la cotización. Si la sucursal de la sesión es distinta a la de la cotización, la app pregunta si se **cambia a la sucursal de la sesión** o se **mantiene la actual** (cerrar el mensaje cancela la edición).
+2. La app guarda una copia de la cotización original; si se **descarta la edición**, se restaura tal como estaba.
+3. Al enviar, todas las líneas quedan con la bodega de la cabecera (incluidos los productos agregados) y se envía a `PUT api/cotizaciones/actualizarCotizacion/{id}`. Las series las calcula la API a partir de la bodega.
+
 
 ### 3. Búsqueda Inteligente
 
@@ -546,7 +621,7 @@ Usuario → Selecciona Cliente
 #### Sincronización Inicial
 Cuando el usuario inicia sesión por primera vez:
 1. Descarga catálogo de productos de su bodega
-2. Descarga clientes asignados a su código SAP
+2. Descarga clientes asignados a su código SAP (webhook N8N `clientesPosVe`; la lista que retorna N8N define qué clientes ve el vendedor, incluidos los clientes compartidos)
 3. Descarga direcciones de entrega
 4. Almacena todo en IndexedDB
 
@@ -577,6 +652,10 @@ La aplicación funciona completamente sin conexión después de la sincronizaci�
 - Enviar pedidos a SAP
 - Consultar stock en tiempo real
 - Usar IA para procesamiento de voz
+- Crear y consultar Recibos de Caja
+- Buscar pedidos en la nube y actualizar estados
+- Carga masiva de pedidos
+- Informe de Operaciones
 
 ### 6. Reportes y Consultas
 
@@ -585,12 +664,29 @@ La aplicación funciona completamente sin conexión después de la sincronizaci�
 - **Información de Producto**: Detalle completo con stock, precio, marca
 - **Saldo de Cliente**: Consulta de límite de crédito y saldo vencido
 
+#### Actualizar estados (en bloque)
+- Botón **"Actualizar estados (N)"** en la pantalla de Pedidos. `N` es la cantidad de pedidos **visibles con los filtros y la búsqueda actuales** cuyo estado aún puede cambiar en la nube (estados 2 a 6, o sin estado). Mientras corre muestra el avance (`Actualizando estados 5/20...`). No se consultan borradores (0), pedidos ya sincronizados a SAP (1), cotizaciones ni cotizaciones en edición.
+- Consulta `GET api/pedidos/uuid/{id_consec}` en paquetes de 5 pedidos, con una pausa de 400 ms entre paquetes, para no saturar el API.
+- Al terminar muestra un resumen: cuántos cambiaron, cuántos siguen igual y cuántos fallaron.
+
+#### Pedidos en la Nube (`/pedidos-nube`)
+- Se abre desde el menú de usuario → **"Buscar pedidos en la nube"**. Requiere conexión.
+- Filtros obligatorios: fecha inicial, fecha final y estado (Por autorizar, Autorizado, Rechazado, En bodega).
+- Consulta `GET api/informePedidos/{fechaIni}/{fechaFin}/{estado}` y muestra **solo los pedidos del vendedor logueado** (se compara `tx_nom_emp` con `tx_empleado_sap` del usuario).
+- Permite buscar por cliente, DocEntry o DocNum y ver el detalle de cada pedido.
+
+#### Informe de Operaciones
+- Se abre desde el menú de usuario → **"Informe de Operaciones"**, en una **pestaña nueva**.
+- URL: `https://script.google.com/macros/s/AKfycbxtFzSEBbtw9gnSkXfCQdPxc4cbYVikz54GJ6BM5BpH6eHPfnfE9hfWBalndUxTXnx-/exec?vendedor={cd_sap}`
+- `{cd_sap}` es el **código SAP del empleado de ventas** del usuario logueado (ej. `?vendedor=198`).
+- Si la URL abre con `vendedor=` vacío, el usuario no tiene `cd_sap` en su sesión local: cerrar sesión y volver a ingresar; si persiste, revisar en MTS NEW que el usuario tenga el código del vendedor.
+
 ### 7. Progressive Web App (PWA)
 
 #### Características PWA
 - **Instalable**: Se puede instalar como app nativa
 - **Funciona Offline**: Service Worker cachea recursos
-- **Actualizaciones Automáticas**: Notifica cuando hay nueva versión
+- **Actualizaciones Automáticas**: El componente `ReloadPrompt` registra el service worker y muestra el aviso **"Hay una nueva versión"** cuando se publica una actualización. El servidor (`.htaccess`) no cachea `index.html`, `sw.js` ni el manifest, para que el aviso aparezca de inmediato.
 - **Responsive**: Se adapta a cualquier tamaño de pantalla
 - **Icono en Pantalla**: Acceso directo desde home screen
 
@@ -614,6 +710,137 @@ La aplicación funciona completamente sin conexión después de la sincronizaci�
 - **Tooltips contextuales** explican cada funcionalidad
 - **Se muestra solo la primera vez** (configurable)
 - **Reactour** para navegación paso a paso
+
+### 9. Menú de Usuario
+
+Al pulsar el nombre del usuario (esquina superior derecha) se despliega un menú con:
+
+| Opción | Acción |
+|---|---|
+| Nombre y correo | Datos del usuario logueado |
+| Recibos de caja | Abre `/recibos-caja` |
+| Buscar pedidos en la nube | Abre `/pedidos-nube` |
+| Informe de Operaciones | Abre el informe del vendedor en una pestaña nueva |
+| Cerrar sesión | Cierra la sesión y vuelve a `/login` |
+
+> En la barra superior también se muestra la **bodega** de la sesión y la **versión** de la app (ej. `V1.3.7.1`).
+
+---
+
+## 💵 Recibos de Caja, Autorización y Notas Crédito
+
+### Resumen del proceso
+
+| Paso | Dónde | Quién |
+|---|---|---|
+| 1. Crear el Recibo de Caja (RC) | POSVE → Menú de usuario → Recibos de caja | Vendedor |
+| 2. Convertir efectivo a consignación (si aplica) | POSVE → Ver recibo | Vendedor |
+| 3. Autorizar o rechazar | MTS NEW → Cartera → Autorizaciones de Recibos de Caja | Cartera |
+| 4. Sincronizar con SAP (Pago Recibido) | Automático al autorizar (job en segundo plano) | Sistema |
+| 5. Crear Nota Crédito por pronto pago | Automático tras sincronizar, si hubo descuentos | Sistema |
+| 6. Reintentos (sincronización / NC) | MTS NEW | Cartera |
+
+### Estados del Recibo de Caja (`in_estado`)
+
+| Código | POSVE muestra | MTS NEW muestra | Significado |
+|---|---|---|---|
+| 6 | Por consignar | — | El RC lleva **efectivo**; el vendedor debe convertirlo a consignación antes de que pase a autorización |
+| 4 | Por Autorizar | Pendiente por autorizar | Esperando que cartera lo autorice o rechace |
+| 1 | Creado | Autorizado – En cola de sincronización | Autorizado; el job de SAP está en proceso |
+| 2 | Sincronizado | Autorizado – Sincronizado | Creado en SAP (tiene número SAP) |
+| 5 | En Error | Autorizado – Error de sincronización | SAP rechazó el RC o falló la comunicación |
+| 3 | Anulado | Rechazado | Rechazado por cartera (con motivo) |
+| 7 | Anulado en SAP | Anulado en SAP | Ya estaba sincronizado y cartera lo anuló directamente en SAP (POSVE muestra el motivo en el detalle) |
+
+### 1. Crear un Recibo de Caja (POSVE)
+
+**Ruta**: Menú de usuario → **Recibos de caja** (`/recibos-caja`). Requiere conexión.
+
+La pantalla lista los RC del usuario (por defecto desde el primer día del mes hasta hoy), con buscador por cliente, código u observaciones, filtros de fecha, estado, medios de pago y total. El botón **"Nuevo recibo"** abre el formulario:
+
+1. **Cliente**: buscar por nombre, código o NIT (mínimo 3 caracteres) entre los clientes sincronizados. Si no aparece, usar **"Actualizar clientes"**. Se muestran saldo, saldo vencido, saldo a favor, condición de pago y asesor.
+2. **Facturas**: **"Buscar facturas del cliente"** consulta los documentos pendientes del cliente en N8N (`getFacturas`) y permite seleccionar varios. Tipos de documento:
+
+   | Tipo | Código | Valor a pagar | Parcial | Descuento |
+   |---|---|---|---|---|
+   | Factura | `FAC` | Positivo, editable | Sí | Sí (pronto pago) |
+   | Nota Crédito | `NC` | **Negativo, fijo** (su saldo) | No | No |
+   | Pago Recibido / anticipo | `PR` | **Negativo**, editable hasta el tope de su saldo | Sí | No |
+
+   - Las NC y los PR existentes del cliente **restan** del total a pagar (se cruzan contra las facturas).
+   - **Descuento de pronto pago** (solo facturas, no parciales): se elige el **3%** o se escribe directamente el valor en pesos (la app calcula el % equivalente). El descuento se calcula sobre el **subtotal** de la factura y se resta del **saldo**.
+   - Si se marca **Parcial**, el valor a pagar queda en 0 para escribirlo manualmente y no se permite descuento.
+3. **Medios de pago** (al menos uno):
+
+   | Medio | Código | Datos obligatorios |
+   |---|---|---|
+   | Efectivo | `EF` | Cuenta de efectivo (solo uno por recibo) |
+   | Consignación | `CO` | Banco, fecha y referencia (máx. 25 caracteres) |
+   | Tarjeta | `TC` | Tarjeta, número, fecha de vencimiento (no vencida) y voucher |
+   | Cheque | `CH` | *Oculto temporalmente* |
+
+4. **Observaciones** (opcional).
+5. **Comprobantes de pago** (opcional): fotos o PDF, varios archivos, **máximo 5 MB** cada uno. Se suben a N8N (`uploadFiles`) al guardar; si la subida falla, el recibo **no se envía**.
+6. **Guardar recibo de caja**: se habilita solo si:
+   - Hay cliente y al menos un medio de pago con sus datos completos.
+   - Cada factura tiene valor a pagar > 0, y cada NC/PR tiene valor < 0.
+   - El **total recibido cubre** el total aplicado a facturas (si no, se muestra en rojo cuánto falta).
+   - Si el total recibido supera lo aplicado, el excedente queda como **pago a cuenta** (saldo a favor del cliente, `db_vlrpgcta`).
+
+**Datos que se envían** (`POST api/cartera/recibos-caja`): cliente, fecha y hora de Bogotá, totales por medio de pago, pago a cuenta, comprobantes (`tx_imagen` en formato JSON), serie de numeración (de N8N `configPOSVE`, campo `serieRecibosCajaNora`; si no responde se usa **188**), `tx_origen = "NORA"`, facturas con los centros de costo del usuario (`tx_cencos`, `tx_cencos2`) y pagos.
+
+**Estado inicial**: con efectivo → **6 (Por consignar)**; sin efectivo → **4 (Por autorizar)**.
+
+### 2. Convertir efectivo a consignación (POSVE)
+
+Cuando el vendedor consigna el efectivo recibido:
+1. En la lista de recibos, pulsar **Ver** (ícono del ojo) en el RC en estado **Por consignar**.
+2. En la línea de pago en efectivo, pulsar **"Convertir a consignación"**.
+3. Diligenciar banco, fecha, referencia (máx. 25 caracteres) y valor, y adjuntar el comprobante (opcional).
+4. **Guardar consignación** → `PUT api/cartera/recibos-caja-consignar/{id}`. La línea de efectivo pasa a consignación (`in_viene_efectivo = 1`), los comprobantes nuevos se suman a los existentes y el RC queda en **4 (Por autorizar)**.
+
+### 3. Autorizar o rechazar (MTS NEW)
+
+**Ruta en MTS NEW**: Cartera → **Autorizaciones de Recibos de Caja** (`autorizar-recibos/{idModulo}`). El acceso depende de los permisos del perfil del usuario sobre el módulo.
+
+1. Elegir rango de fechas (la fecha final no puede ser mayor a hoy) y **Consultar**.
+2. Filtrar por estado (Todos, Pendiente por autorizar, Autorizado, Rechazado, Anulado en SAP) o buscar por N° RC, N° SAP, código o nombre del cliente, o usuario que autorizó.
+3. Abrir el detalle del RC para revisar facturas, pagos y comprobantes.
+4. Acciones (solo en RC **pendientes por autorizar**, estado 4):
+   - **Autorizar** → `PUT api/cartera/recibos-caja-autorizar/{id}`. Guarda quién autorizó (`tx_usuaauto`) y la fecha (`fe_fechaauto`), pasa a estado **1** y lanza la sincronización con SAP **en segundo plano**. La pantalla responde de inmediato: *"Recibo autorizado y en proceso de sincronización con SAP"*.
+   - **Rechazar** → pide un **motivo obligatorio** → `PUT api/cartera/recibos-caja-anular/{id}`. Queda en estado **3**; el vendedor ve el motivo en POSVE (*"Motivo de rechazo"*). No se puede rechazar un RC ya sincronizado.
+5. **Anular en SAP** (solo RC **sincronizados**, estado 2): para cuando cartera anuló el pago directamente en SAP. Pide motivo y solo está disponible si el **cargo** del usuario tiene activo el permiso `in_anula_rc_sinc` (MTS NEW → Configuración → Cargos). Solo cambia el estado a **7** en SOFIA y conserva el DocNum/DocEntry.
+
+### 4. Sincronización con SAP
+
+El job `SincronizarReciboCajaSAP` (API MTS / Laravel):
+1. Arma el JSON del recibo y lo envía al Service Layer (`cartera/crear`).
+2. **Éxito** → guarda `in_nrosap` (DocNum) e `in_clavesap` (DocEntry) y pasa a **2 (Sincronizado)**. Si SAP indica que el recibo ya existía pero devuelve DocNum/DocEntry, también se toma como sincronizado.
+3. **Error** → pasa a **5** y guarda el detalle en `tx_msgerror_serv`.
+4. Si quedó sincronizado: crea la **Nota Crédito por pronto pago** (si aplica) y envía el **correo de confirmación** al cliente.
+
+**Reintentar**: en MTS NEW → Cartera → **Recibos de Caja**, los RC en estado **5 (Error)** muestran el botón **Sincronizar** (`GET api/sl/sincronizar/recibo-caja/{id}`). Los RC sincronizados tienen además el botón para **reenviar el correo** de confirmación (`POST api/cartera/recibos-caja-enviar-correo/{id}`).
+
+> No se sincronizan RC en estado 3 (rechazado), 6 (por consignar) ni 7 (anulado en SAP).
+
+### 5. Notas Crédito
+
+En los Recibos de Caja intervienen **dos tipos** de Nota Crédito:
+
+#### a) Notas Crédito existentes del cliente (aplicadas en el RC)
+- Aparecen junto a las facturas en "Buscar facturas del cliente" con tipo `NC`.
+- Se aplican por su saldo completo con valor **negativo** (no admiten parcial ni descuento) y **reducen** el valor que el cliente debe pagar.
+
+#### b) Nota Crédito por descuento de pronto pago (creada automáticamente)
+- Se crea en SAP **automáticamente** después de sincronizar el RC, **solo si** alguna factura tiene descuento (`db_vlrdto > 0`).
+- Es **una sola NC por recibo**, por la suma de todos los descuentos, enviada al Service Layer (`cartera/notaCredito/crear`) con:
+  - `CardCode`: cliente del recibo
+  - `descripcion`: `Descuento pronto pago de las facturas: {números de factura}`
+  - `monto`: total de descuentos
+  - `ocrcode` / `ocrcode2`: centros de costo de la **primera factura** del recibo
+- El resultado queda en la cabecera del RC: `db_montonc` (valor), `in_docnumnc` / `in_clavenumnc` (DocNum/DocEntry de la NC) y `tx_msgnc` (mensaje).
+- Para no duplicarla, si el RC se resincroniza y ya tiene mensaje de NC, **no se vuelve a crear**.
+- **Ver / reintentar en MTS NEW**: en el detalle del RC (Autorizaciones de Recibos de Caja) aparece el recuadro **"Nota Crédito Pronto Pago"** con el estado *Creada en SAP* o *Con novedad*, el valor, el N° de la NC y el mensaje. Si no se creó, el botón **"Reintentar Nota Crédito"** (`PUT api/sl/nota-credito/recibo-caja/{id}`) vuelve a crearla **sin reenviar el recibo**. Solo funciona con RC sincronizados (estado 2).
 
 ---
 
@@ -752,6 +979,61 @@ localStorage.getItem('usuario')  // Ver datos del usuario
 1. Esperar a tener buena conexión
 2. La app intentará enviarlo automáticamente
 3. Puede forzar el envío desde el menú de pedidos pendientes
+
+### Problemas de Recibos de Caja
+
+#### ❌ El botón "Guardar recibo de caja" no se activa
+
+Revisar, en este orden:
+1. Que haya un cliente seleccionado y **al menos un medio de pago**.
+2. Que el **total recibido cubra** el total aplicado a facturas (si falta, se muestra un aviso rojo con el valor faltante).
+3. Que ninguna factura tenga valor a pagar en 0 (por ejemplo, una factura marcada como **Parcial** sin valor escrito).
+4. Que cada medio de pago tenga sus datos completos:
+   - Efectivo: cuenta de efectivo
+   - Consignación: banco, fecha y referencia
+   - Tarjeta: tarjeta, número, voucher y fecha de vencimiento **no vencida**
+
+#### ❌ "No se pudo subir el comprobante de pago. El recibo no fue enviado."
+- El recibo **no se creó**. Verificar conexión, que cada archivo pese **máximo 5 MB** y que sea imagen o PDF. Intentar de nuevo o guardar sin comprobante.
+- Si persiste, revisar el webhook N8N `uploadFiles` y el servidor de archivos (`VITE_ARCHIVOS_BASE_URL`).
+
+#### ❌ "Este cliente no tiene facturas pendientes" o "No se pudieron cargar las facturas del cliente"
+- Confirmar en SAP que el cliente tenga documentos abiertos.
+- Revisar el webhook N8N `getFacturas` (en demo: `getFacturasTest`).
+- Aunque no haya facturas, se puede crear un RC solo como **pago a cuenta** (anticipo).
+
+#### ❌ El cliente no aparece en el buscador del recibo
+- Escribir al menos **3 caracteres**.
+- Pulsar **"Actualizar clientes"** (requiere que el usuario tenga `cd_sap`).
+
+#### ❌ Las listas de cuentas, bancos o tarjetas aparecen vacías
+- Se cargan desde los webhooks N8N `listas/cuentasefectivo`, `listas/cuentasbancos` y `listas/tarjetas` al abrir el formulario. Verificar conexión, cerrar y volver a abrir el formulario.
+- La cuenta de efectivo se filtra al código **11051014**; si no aparece, revisar que exista en la lista de N8N.
+
+#### ⏳ El recibo sigue en "Por consignar"
+- Es normal si lleva **efectivo**: el vendedor debe abrir el recibo (**Ver**) y usar **"Convertir a consignación"**. Hasta entonces cartera no lo ve como pendiente por autorizar.
+
+#### ⏳ El recibo sigue en "Por Autorizar"
+- Cartera aún no lo ha autorizado en MTS NEW → **Autorizaciones de Recibos de Caja**.
+
+#### ❌ El recibo aparece "Anulado" (rechazado)
+- Abrir el recibo en POSVE: el recuadro **"Motivo de rechazo"** indica la causa. Se debe crear un **nuevo** recibo corregido; un recibo rechazado no se puede reactivar.
+
+#### ❌ El recibo quedó "En Error" (estado 5)
+1. En MTS NEW → Cartera → Recibos de Caja, revisar el mensaje de error de SAP (`tx_msgerror_serv`).
+2. Corregir la causa en SAP si aplica (ej. factura ya pagada, cuenta inválida, período cerrado).
+3. Pulsar **Sincronizar** para reenviarlo.
+
+#### ⏳ El recibo sigue en "Creado" (estado 1) por mucho tiempo
+- El job de sincronización no terminó. Revisar los logs de la API MTS (Laravel) buscando `recibo de caja #{id}` y escalar a desarrollo si el recibo no avanza.
+
+#### ❌ La Nota Crédito de pronto pago no se creó
+1. En MTS NEW → Autorizaciones de Recibos de Caja → detalle del RC, el recuadro **"Nota Crédito Pronto Pago"** aparece **"Con novedad"** con el mensaje de SAP.
+2. Corregir la causa y pulsar **"Reintentar Nota Crédito"** (no reenvía el recibo).
+3. Solo se crea NC si alguna factura tuvo descuento y el RC está **sincronizado** (estado 2).
+
+#### ❌ No aparece el botón "Anular en SAP"
+- Solo aparece en RC **sincronizados** (estado 2) y si el **cargo** del usuario tiene activo el permiso `in_anula_rc_sinc` en MTS NEW.
 
 ### Problemas de Rendimiento
 
@@ -974,6 +1256,61 @@ Content-Type: application/json
 }
 ```
 
+**Pedidos y cotizaciones (otros)**:
+```http
+GET /api/pedidos/uuid/{id_consec}                      # Estado de un pedido en la nube
+GET /api/informePedidos/{fechaIni}/{fechaFin}/{estado} # Pedidos en la nube
+PUT /api/cotizaciones/actualizarCotizacion/{id}        # Guardar edición de cotización
+```
+
+**Recibos de Caja (Cartera)**:
+
+| Método | Endpoint | Uso | Desde |
+|---|---|---|---|
+| POST | `/api/cartera/recibos-caja` | Crear RC | POSVE |
+| GET | `/api/cartera/recibos-caja/consulta?tx_usuario=&fe_inicio=&fe_fin=` | Listar RC del usuario | POSVE / MTS NEW |
+| GET | `/api/cartera/recibos-caja/{id}` | Detalle (cabecera, facturas, pagos) | POSVE / MTS NEW |
+| PUT | `/api/cartera/recibos-caja-consignar/{id}` | Convertir efectivo a consignación (6 → 4) | POSVE |
+| GET | `/api/cartera/recibos-caja/autorizaciones?fe_inicio=&fe_fin=` | Listado para autorizar | MTS NEW |
+| PUT | `/api/cartera/recibos-caja-autorizar/{id}` | Autorizar (4 → 1 y sincroniza) | MTS NEW |
+| PUT | `/api/cartera/recibos-caja-anular/{id}` | Rechazar con motivo (→ 3) | MTS NEW |
+| PUT | `/api/cartera/recibos-caja-anular-sap/{id}` | Marcar anulado en SAP (2 → 7) | MTS NEW |
+| GET | `/api/sl/sincronizar/recibo-caja/{id}` | Reenviar a SAP | MTS NEW |
+| PUT | `/api/sl/nota-credito/recibo-caja/{id}` | Reintentar NC de pronto pago | MTS NEW |
+| POST | `/api/cartera/recibos-caja-enviar-correo/{id}` | Reenviar correo de confirmación | MTS NEW |
+| GET | `/api/cartera/recibos-caja/informe-consolidado` | Informe consolidado de RC | MTS NEW |
+
+**Ejemplo de creación de RC**:
+```json
+{
+  "tx_codsn": "C900123456",
+  "tx_nomsn": "CLIENTE EJEMPLO SAS",
+  "fe_fecha": "2026-11-25",
+  "fe_hora": "10:30:00",
+  "db_total": 950000,
+  "db_totefe": 0, "db_totcon": 950000, "db_tottc": 0, "db_totche": 0,
+  "db_vlrpgcta": 0,
+  "tx_coment": "",
+  "tx_imagen": "[{\"fileName\":\"...\",\"folder\":\"recibosCaja\",\"path\":\"...\"}]",
+  "in_estado": 4,
+  "tx_usuario": "vendedor@empresa.com",
+  "in_serie": 188,
+  "tx_origen": "NORA",
+  "facturas": [
+    { "id_linea": 1, "tx_tipodoc": "FAC", "in_nrosap": 12345, "in_clavesap": 6789,
+      "db_saldofra": 1000000, "db_vlrpag": 970000, "db_vlrdto": 30000, "db_prcdto": 3,
+      "tx_ocrcode": "CC1", "tx_ocrcode2": "CC2", "...": "..." },
+    { "id_linea": 2, "tx_tipodoc": "NC", "in_nrosap": 555, "db_vlrpag": -20000, "...": "..." }
+  ],
+  "pagos": [
+    { "id_linea": 1, "tx_formpg": "CO", "tx_banco": "...", "tx_nombco": "...",
+      "tx_ctanro": "0", "fe_venc": "2026-11-25", "db_vlrpag": 950000, "tx_referen": "REF123" }
+  ]
+}
+```
+
+Validaciones del API: `FAC` con `db_vlrpag > 0`; `NC` y `PR` con `db_vlrpag < 0`; `PR` debe traer `in_transid`; si no hay facturas, `db_vlrpgcta` debe ser mayor a 0; los pagos son obligatorios (mínimo 1, cada uno con valor > 0).
+
 ### 2. Service Layer SAP Business One
 
 **Base URL**: `https://181.79.52.58:55553/b1s/v1`
@@ -1066,6 +1403,37 @@ Content-Type: application/json
 }
 ```
 
+### 6. N8N Webhooks (Recibos de Caja, clientes y carga masiva)
+
+**Base**: `https://n8n.srv1097949.hstgr.cloud/webhook/`
+
+| Webhook | Método | Uso |
+|---|---|---|
+| `clientesPosVe` (demo: `clientesPosVeTest`) | POST `{ codigo: cd_sap }` | Clientes del vendedor |
+| `cargaMasiva` | POST (archivo Excel) | Carga masiva de pedidos |
+| `getFacturas` (demo: `getFacturasTest`) | POST `{ codigoSN, emailUsuario }` | Documentos pendientes del cliente (FAC, NC, PR) |
+| `.../listas/cuentasefectivo` | GET | Cuentas de efectivo |
+| `.../listas/cuentasbancos` | GET | Cuentas bancarias (consignaciones) |
+| `.../listas/tarjetas` | GET | Tarjetas |
+| `.../listas/bancos` | GET | Bancos (cheques) |
+| `configPOSVE` | GET | Configuración; `serieRecibosCajaNora` = serie de numeración de los RC |
+| `uploadFiles` | POST (multipart: `files`, `carpeta`) | Subir comprobantes de pago |
+
+### 7. Service Layer SBO (API Node.js de cartera)
+
+Usado por la API MTS al sincronizar los Recibos de Caja:
+
+| Endpoint | Uso |
+|---|---|
+| `cartera/crear` | Crea el Pago Recibido (Incoming Payment) en SAP; retorna DocNum/DocEntry |
+| `cartera/notaCredito/crear` | Crea la NC de pronto pago: `{ CardCode, descripcion, monto, ocrcode, ocrcode2 }` |
+
+### 8. Informe de Operaciones (Google Apps Script)
+
+**URL**: `https://script.google.com/macros/s/AKfycbxtFzSEBbtw9gnSkXfCQdPxc4cbYVikz54GJ6BM5BpH6eHPfnfE9hfWBalndUxTXnx-/exec?vendedor={cd_sap}`
+
+Se abre desde el menú de usuario. El parámetro `vendedor` es el código SAP del empleado de ventas del usuario logueado.
+
 ---
 
 ## 📞 Contacto y Soporte
@@ -1083,11 +1451,10 @@ Content-Type: application/json
 
 Para verificar la versión de la aplicación:
 1. Abrir la app
-2. Ir a Configuración o Perfil
-3. La versión aparece en la parte inferior
+2. La versión aparece en la **barra superior**, junto al logo y la bodega (ej. `V1.3.7.1`)
 
-**Versión Actual**: 1.2.6  
-**Fecha de Actualización**: Marzo 2026
+**Versión Actual**: 1.3.7.1  
+**Fecha de Actualización**: Noviembre 2026
 
 ---
 
@@ -1104,12 +1471,14 @@ Para verificar la versión de la aplicación:
 
 ### Limitaciones Conocidas
 
-1. **Modo Offline Limitado**: No se puede consultar stock en empo real
+1. **Modo Offline Limitado**: No se puede consultar stock en tiempo real
 2. **IA Requiere Conexión**: La búsqueda por voz necesita internet
 3. **Sincronización Inicial**: Puede tardar varios minutos la primera vez
 4. **Navegadores Soportados**: Chrome, Edge, Safari - NO Internet Explorer
 5. **Tamaño del Catálogo**: Máximo recomendado 50,000 productos
-
+6. **Recibos de Caja solo en línea**: no se pueden crear ni consultar sin conexión
+7. **Pago con cheque**: oculto temporalmente en el formulario de Recibo de Caja
+8. **Descuento de pronto pago**: por ahora solo está disponible el 3% predefinido (o un valor escrito manualmente)
 ### Buenas Prácticas para Usuarios
 
 1. **Sincronizar diariamente** al iniciar jornada
@@ -1138,7 +1507,25 @@ Para verificar la versión de la aplicación:
 
 ## 🔄 Historial de Cambios
 
-### v1.2.6 (Actual)
+### v1.3.7.1 (Actual) — Noviembre 2026
+- Nueva opción **Informe de Operaciones** en el menú de usuario (abre el informe del vendedor en una pestaña nueva)
+- Descuentos por línea en pedidos (incluida la carga masiva)
+- Botón **Actualizar estados** para consultar en bloque el estado de los pedidos en la nube
+- Edición de cotizaciones: pregunta si se cambia a la sucursal de la sesión
+- Aviso de nueva versión de la PWA (`ReloadPrompt`) y `.htaccess` sin caché para `index.html`, `sw.js` y el manifest
+
+### v1.3.x — Septiembre / Octubre 2026
+- **Recibos de Caja** en POSVE: facturas, notas crédito y pagos recibidos; efectivo, consignación y tarjeta; pago a cuenta; comprobantes (fotos/PDF); descuento de pronto pago con valor editable
+- Flujo **Por consignar**: conversión del efectivo a consignación desde el recibo
+- Autorización, rechazo, anulación en SAP y sincronización de los RC desde MTS NEW
+- **Nota Crédito automática** en SAP por los descuentos de pronto pago, con opción de reintento
+- Serie de numeración de los RC configurable desde N8N (`configPOSVE`)
+- Centros de costo del vendedor en las facturas del recibo
+- Carga masiva de pedidos desde Excel y exportación de un pedido a Excel
+- Clientes compartidos, Pedidos en la nube y modificación de cotizaciones
+- Menú de usuario en la barra superior (Recibos de caja, Pedidos en la nube, Cerrar sesión)
+
+### v1.2.6
 - Mejoras en búsqueda vectorial
 - Optimización de sincronización
 - Corrección de bugs menores
@@ -1171,6 +1558,9 @@ Para verificar la versión de la aplicación:
 
 - **Frontend**: Xyro-SAS-Silveragro-SAS/POS_VE
 - **Backend**: (Mismo repositorio, carpeta /backend)
+- **MTS NEW (autorización de RC)**: aplicación Angular MTS_New (módulo Cartera)
+- **API MTS (Recibos de Caja, sincronización y NC)**: API Laravel MTS_New_API
+- **Manual de usuario**: `frontend/docs/Manual_de_usuario_NORA.pdf`
 
 ---
 

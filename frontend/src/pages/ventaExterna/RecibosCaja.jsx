@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import TopBar from "../../components/global/TopBar";
 import NuevoReciboModal from "../../components/recibosCaja/NuevoReciboModal";
 import VerReciboModal from "../../components/recibosCaja/VerReciboModal";
-import { currency } from "../../components/recibosCaja/utilsRecibos";
+import { currency, estadoRecibo } from "../../components/recibosCaja/utilsRecibos";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/apiService";
 import { Plus, Search, Receipt, Banknote, ArrowLeftRight, CreditCard, Landmark, ChevronLeft, ChevronRight, Eye } from "lucide-react";
@@ -22,18 +22,6 @@ const formatFecha = (valor) => {
   const [anio, mes, dia] = String(valor).slice(0, 10).split("-");
   return `${dia}/${mes}/${anio}`;
 };
-
-const ESTADOS_RECIBO = {
-  1: { label: "Creado", clase: "bg-blue-100 text-blue-700" },
-  2: { label: "Sincronizado", clase: "bg-green-100 text-green-700" },
-  3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
-  4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
-  5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
-  6: { label: "Por consignar", clase: "bg-blue-100 text-blue-700" },
-};
-
-const estadoRecibo = (r) =>
-  ESTADOS_RECIBO[Number(r.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const inicioMesISO = () => {

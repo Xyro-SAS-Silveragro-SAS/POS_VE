@@ -1,18 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { X, FileText, Image as ImageIcon, Receipt, ExternalLink, ArrowLeftRight } from "lucide-react";
-import { currency, MEDIOS_PAGO, MANEJOS_CHEQUE } from "./utilsRecibos";
+import { currency, MEDIOS_PAGO, MANEJOS_CHEQUE, estadoRecibo } from "./utilsRecibos";
 import { ARCHIVOS_BASE_URL, CARPETA_ARCHIVO, N8N_CUENTAS_BANCOS_URL } from "../../config/config.jsx";
 import api from "../../services/apiService";
 import ConvertirPagoEfectivoModal from "./ConvertirPagoEfectivoModal";
-
-const ESTADOS_RECIBO = {
-  1: { label: "Creado", clase: "bg-blue-100 text-blue-700" },
-  2: { label: "Sincronizado", clase: "bg-green-100 text-green-700" },
-  3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
-  4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
-  5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
-  6: { label: "Por consignar", clase: "bg-blue-100 text-blue-700" },
-};
 
 const MANEJO_LABEL = (codigo) => MANEJOS_CHEQUE.find((m) => m.codigo === codigo)?.label || codigo;
 const FORMPG_LABEL = (codigo) => MEDIOS_PAGO.find((m) => m.codigo === codigo)?.label || codigo;
@@ -86,7 +77,7 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
 
   if (!open) return null;
 
-  const estado = ESTADOS_RECIBO[Number(recibo?.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
+  const estado = estadoRecibo(recibo);
   const comprobantes = parseComprobantes(recibo?.tx_imagen);
   const permiteConvertirEfectivo = Number(recibo?.in_estado) === 6;
 
@@ -136,6 +127,11 @@ const VerReciboModal = ({ open, onClose, idNrorc }) => {
                 {Number(recibo.in_estado) === 3 && recibo.tx_motivo_anula && (
                   <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-700">
                     <span className="font-semibold">Motivo de rechazo:</span> {recibo.tx_motivo_anula}
+                  </div>
+                )}
+                {Number(recibo.in_estado) === 7 && recibo.tx_motivo_anula && (
+                  <div className="mt-2 rounded-xl border border-gray-300 bg-gray-100 px-4 py-2.5 text-xs text-gray-700">
+                    <span className="font-semibold">Motivo de anulación en SAP:</span> {recibo.tx_motivo_anula}
                   </div>
                 )}
               </section>

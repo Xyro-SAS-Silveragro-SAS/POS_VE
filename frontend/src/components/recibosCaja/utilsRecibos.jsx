@@ -8,6 +8,20 @@ export const hoyBogota = () => new Date().toLocaleDateString("en-CA", { timeZone
 
 export const DESCUENTOS = [3, 4, 5, 7.85];
 
+// Estados del recibo de caja (in_estado). Deben coincidir con los que maneja la API MTS / MTS NEW.
+export const ESTADOS_RECIBO = {
+  1: { label: "Creado", clase: "bg-blue-100 text-blue-700" },
+  2: { label: "Sincronizado", clase: "bg-green-100 text-green-700" },
+  3: { label: "Anulado", clase: "bg-red-100 text-red-600" },
+  4: { label: "Por Autorizar", clase: "bg-amber-100 text-amber-700" },
+  5: { label: "En Error", clase: "bg-rose-100 text-rose-700" },
+  6: { label: "Por consignar", clase: "bg-blue-100 text-blue-700" },
+  7: { label: "Anulado en SAP", clase: "bg-gray-800 text-white" },
+};
+
+export const estadoRecibo = (recibo) =>
+  ESTADOS_RECIBO[Number(recibo?.in_estado)] || { label: "Sin estado", clase: "bg-gray-100 text-gray-600" };
+
 export const MEDIOS_PAGO = [
   { codigo: "EF", label: "Efectivo" },
   { codigo: "CO", label: "Consignación" },
