@@ -3,7 +3,9 @@ import { useState, useEffect, useRef } from "react"
 import ConnectionAlert from "./ConnectionAlert"
 import { useAuth } from "../../context/AuthContext"
 import { VERSION } from "../../config/config.jsx"
-import { ArrowLeft, ChevronDown, Receipt, LogOut, User, Cloud } from "lucide-react"
+import { ArrowLeft, ChevronDown, Receipt, LogOut, User, Cloud, FileBarChart } from "lucide-react"
+
+const URL_INFORME_OPERACIONES = "https://script.google.com/macros/s/AKfycbxtFzSEBbtw9gnSkXfCQdPxc4cbYVikz54GJ6BM5BpH6eHPfnfE9hfWBalndUxTXnx-/exec";
 import { useNavigate } from "react-router-dom"
 
 const TopBar = ({ startTour = null, showSimple = false }) => {
@@ -32,6 +34,12 @@ const TopBar = ({ startTour = null, showSimple = false }) => {
     const handleIrPedidosNube = () => {
         setMenuUsuarioAbierto(false);
         navigate('/pedidos-nube');
+    };
+
+    const handleInformeOperaciones = () => {
+        setMenuUsuarioAbierto(false);
+        const vendedor = encodeURIComponent(currentUser?.cd_sap ?? '');
+        window.open(`${URL_INFORME_OPERACIONES}?vendedor=${vendedor}`, '_blank', 'noopener,noreferrer');
     };
 
     const handleLogout = () => {
@@ -138,6 +146,14 @@ const TopBar = ({ startTour = null, showSimple = false }) => {
                                     >
                                         <Cloud size={16} className="text-[#546C4C]" />
                                         Buscar pedidos en la nube
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleInformeOperaciones}
+                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-gray-50 text-left cursor-pointer"
+                                    >
+                                        <FileBarChart size={16} className="text-[#546C4C]" />
+                                        Informe de Operaciones
                                     </button>
                                     <button
                                         type="button"
